@@ -9,7 +9,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	go.mongodb.org/atlas v0.16.0
 	go.opentelemetry.io/collector v0.54.0
-	go.uber.org/zap v1.21.0
+	go.uber.org/zap v1.22.0
 )
 
 require (
