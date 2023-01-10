@@ -126,7 +126,7 @@ func (p *serviceGraphProcessor) Start(_ context.Context, host component.Host) er
 	}
 
 	// TODO: Consider making this configurable.
-	go p.cacheLoop(time.Minute)
+	go p.cacheLoop(2 * time.Second)
 
 	// TODO: Consider making this configurable.
 	go p.storeExpirationLoop(2 * time.Second)
@@ -494,7 +494,7 @@ func (p *serviceGraphProcessor) cleanCache() {
 	var staleSeries []string
 	p.metricMutex.RLock()
 	for key, series := range p.keyToMetric {
-		if series.lastUpdated+15*time.Minute.Milliseconds() < time.Now().UnixMilli() {
+		if series.lastUpdated+2*time.Second.Milliseconds() < time.Now().UnixMilli() {
 			staleSeries = append(staleSeries, key)
 		}
 	}

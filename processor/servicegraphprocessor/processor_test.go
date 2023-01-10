@@ -318,3 +318,93 @@ func TestUpdateDurationMetrics(t *testing.T) {
 		})
 	}
 }
+
+/*
+processor.go has bellow change:
+#line 129 go p.cacheLoop(time.Minute) -> go p.cacheLoop(2 * time.Second)
+#line 497 series.lastUpdated+15*time.Minute.Milliseconds() < time.Now().UnixMilli() -> series.lastUpdated+2*time.Second.Milliseconds() < time.Now().UnixMilli()
+
+All of changes aim to subtract the duration of The test, after changes, key in keyToMetric will expire after 2 second.
+
+I want to demonstrate that how  the failed to find dimensions error will error.
+
+The reason of the error is that keys in reqFailedTotal are never expire and collectCountMetrics() or collectLatencyMetrics()
+will loop on reqFailedTotal.
+*/
+func Test_Failed_to_find_dimensions(t *testing.T) {
+	// Prepare
+	cfg := &Config{
+		MetricsExporter: "mock",
+		Dimensions:      []string{"some-attribute", "non-existing-attribute"},
+		Store: StoreConfig{
+			MaxItems: 10,
+			TTL:      time.Second,
+		},
+	}
+
+	mockMetricsExporter := newMockMetricsExporter(func(md pmetric.Metrics) error {
+		return nil
+	})
+
+	//  key in keyToMetric will expire after 2 second
+	processor := newProcessor(zaptest.NewLogger(t), cfg, consumertest.NewNop())
+
+	mHost := newMockHost(map[component.DataType]map[component.ID]component.Component{
+		component.DataTypeMetrics: {
+			component.NewID("mock"): mockMetricsExporter,
+		},
+	})
+
+	assert.NoError(t, processor.Start(context.Background(), mHost))
+
+	td := mySampleTraces("first")
+	assert.NoError(t, processor.ConsumeTraces(context.Background(), td))
+
+	// wait all key in keyToMetric expire.
+	time.Sleep(time.Second * 5)
+
+	// ConsumeTraces different traces, it will occur an error:
+	// failed to build metrics: failed to find dimensions for key some-servicesome-servicefirst
+	td = mySampleTraces("second")
+	assert.NoError(t, processor.ConsumeTraces(context.Background(), td))
+
+	// Shutdown the processor
+	assert.NoError(t, processor.Shutdown(context.Background()))
+}
+
+func mySampleTraces(attrValue string) ptrace.Traces {
+	tStart := time.Date(2022, 1, 2, 3, 4, 5, 6, time.UTC)
+	tEnd := time.Date(2022, 1, 2, 3, 4, 6, 6, time.UTC)
+
+	traces := ptrace.NewTraces()
+
+	resourceSpans := traces.ResourceSpans().AppendEmpty()
+	resourceSpans.Resource().Attributes().PutStr(semconv.AttributeServiceName, "some-service")
+
+	scopeSpans := resourceSpans.ScopeSpans().AppendEmpty()
+
+	traceID := pcommon.TraceID([16]byte{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10})
+	clientSpanID := pcommon.SpanID([8]byte{0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18})
+
+	//span one error
+	clientSpan := scopeSpans.Spans().AppendEmpty()
+	clientSpan.SetName("client span")
+	clientSpan.SetSpanID(clientSpanID)
+	clientSpan.SetTraceID(traceID)
+	clientSpan.SetKind(ptrace.SpanKindClient)
+	clientSpan.SetStartTimestamp(pcommon.NewTimestampFromTime(tStart))
+	clientSpan.SetEndTimestamp(pcommon.NewTimestampFromTime(tEnd))
+	clientSpan.Attributes().PutStr("some-attribute", attrValue) // Attribute selected as dimension for metrics
+
+	serverSpan := scopeSpans.Spans().AppendEmpty()
+	serverSpan.SetName("server span")
+	serverSpan.SetSpanID([8]byte{0x19, 0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26})
+	serverSpan.SetTraceID(traceID)
+	serverSpan.SetParentSpanID(clientSpanID)
+	serverSpan.SetKind(ptrace.SpanKindServer)
+	serverSpan.SetStartTimestamp(pcommon.NewTimestampFromTime(tStart))
+	serverSpan.SetEndTimestamp(pcommon.NewTimestampFromTime(tEnd))
+	serverSpan.Status().SetCode(ptrace.StatusCodeError)
+
+	return traces
+}
