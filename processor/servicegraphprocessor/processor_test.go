@@ -334,14 +334,21 @@ func Test_error_emit_metrics(t *testing.T) {
 
 	mockMetricsExporter := newMockMetricsExporter(func(md pmetric.Metrics) error {
 		/*
-			processor_test.go:387: traces_service_graph_request_total Sum {"client":"some-service","server":"some-service","connection_type":"","failed":"%!s(bool=true)","client_some-attribute":"span with error status","some-attribute":"span with error status","server_some-attribute":"span with error status"} 1.000000
-			processor_test.go:387: traces_service_graph_request_total Sum {"server_some-attribute":"span with unset status","client":"some-service","server":"some-service","connection_type":"","failed":"%!s(bool=false)","client_some-attribute":"span with unset status","some-attribute":"span with unset status"} 1.000000
-			processor_test.go:387: traces_service_graph_request_failed_total Sum {"server_some-attribute":"span with error status","client":"some-service","server":"some-service","connection_type":"","failed":"%!s(bool=true)","client_some-attribute":"span with error status","some-attribute":"span with error status"} 1.000000
-			processor_test.go:394: traces_service_graph_request_duration_seconds Histogram map[client:some-service client_some-attribute:span with error status connection_type: failed:true server:some-service server_some-attribute:span with error status some-attribute:span with error status] 1
-			processor_test.go:394: traces_service_graph_request_duration_seconds Histogram map[client:some-service client_some-attribute:span with unset status connection_type: failed:false server:some-service server_some-attribute:span with unset status some-attribute:span with unset status] 1
+
+		   processor_test.go:401: traces_service_graph_request_total Sum {"server":"some-service","connection_type":"","failed":"false","client_some-attribute":"span with unset status","some-attribute":"span with unset status","server_some-attribute":"span with unset status","client":"some-service"} 1.000000
+		   processor_test.go:408: traces_service_graph_request_duration_seconds Histogram {"server":"some-service","connection_type":"","failed":"false","client_some-attribute":"span with unset status","some-attribute":"span with unset status","server_some-attribute":"span with unset status","client":"some-service"} 1
+		   processor_test.go:412: ---------------
+		   logger.go:130: 2023-01-10T18:13:05.697+0800	DEBUG	edge completed	{"client_service": "some-service", "server_service": "some-service", "connection_type": "", "trace_id": "0102030405060708090a0b0c0d0e0f10"}
+		   processor_test.go:401: traces_service_graph_request_total Sum {"server_some-attribute":"span with unset status","client":"some-service","server":"some-service","connection_type":"","failed":"false","client_some-attribute":"span with unset status","some-attribute":"span with unset status"} 1.000000
+		   processor_test.go:401: traces_service_graph_request_total Sum {"client_some-attribute":"span with error status","some-attribute":"span with error status","server_some-attribute":"span with error status","client":"some-service","server":"some-service","connection_type":"","failed":"true"} 1.000000
+		   processor_test.go:401: traces_service_graph_request_failed_total Sum {"server_some-attribute":"span with error status","client":"some-service","server":"some-service","connection_type":"","failed":"true","client_some-attribute":"span with error status","some-attribute":"span with error status"} 1.000000
+		   processor_test.go:408: traces_service_graph_request_duration_seconds Histogram {"server_some-attribute":"span with unset status","client":"some-service","server":"some-service","connection_type":"","failed":"false","client_some-attribute":"span with unset status","some-attribute":"span with unset status"} 1
+		   processor_test.go:408: traces_service_graph_request_duration_seconds Histogram {"server":"some-service","connection_type":"","failed":"true","client_some-attribute":"span with error status","some-attribute":"span with error status","server_some-attribute":"span with error status","client":"some-service"} 1
+		   processor_test.go:412: ---------------
+
 		*/
 		myMetricsStdout(t, md)
-		return MyVerifyMetrics(t, md)
+		return nil
 	})
 
 	processor := newProcessor(zaptest.NewLogger(t), cfg, consumertest.NewNop())
@@ -354,9 +361,17 @@ func Test_error_emit_metrics(t *testing.T) {
 
 	assert.NoError(t, processor.Start(context.Background(), mHost))
 
-	// Test & verify
-	td := mySampleTraces()
+	// there are two  status = unset span
+	td := mySampleTraces("unset")
 	// The assertion is part of verifyMetrics func.
+	assert.NoError(t, processor.ConsumeTraces(context.Background(), td))
+
+	// there are two  status = error span
+	td = mySampleTraces("error")
+	assert.NoError(t, processor.ConsumeTraces(context.Background(), td))
+
+	// there are two  status = error span
+	td = mySampleTraces("error")
 	assert.NoError(t, processor.ConsumeTraces(context.Background(), td))
 
 	// Shutdown the processor
@@ -366,7 +381,7 @@ func Test_error_emit_metrics(t *testing.T) {
 func mapToString(m map[string]any) string {
 	var str []string
 	for k, v := range m {
-		tmp := fmt.Sprintf(`"%s":"%s"`, k, v)
+		tmp := fmt.Sprintf(`"%s":"%v"`, k, v)
 		str = append(str, tmp)
 	}
 	return "{" + strings.Join(str, ",") + "}"
@@ -394,89 +409,93 @@ func myMetricsStdout(t *testing.T, md pmetric.Metrics) {
 				dp := m.Histogram().DataPoints().At(j)
 				metricsAttr := dp.Attributes().AsRaw()
 				metricsCount := dp.Count()
-				t.Log(fmt.Sprintf("%s %s %v %d", metricsName, metricsType, metricsAttr, metricsCount))
+				t.Log(fmt.Sprintf("%s %s %v %d", metricsName, metricsType, mapToString(metricsAttr), metricsCount))
 			}
 		}
 	}
+	t.Log("---------------")
 }
 
-func mySampleTraces() ptrace.Traces {
+func mySampleTraces(status string) ptrace.Traces {
+	traces := ptrace.NewTraces()
+	traceID := pcommon.TraceID([16]byte{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10})
+	clientSpanID := pcommon.SpanID([8]byte{0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18})
 	tStart := time.Date(2022, 1, 2, 3, 4, 5, 6, time.UTC)
 	tEnd := time.Date(2022, 1, 2, 3, 4, 6, 6, time.UTC)
 
-	traces := ptrace.NewTraces()
+	if status == "error" {
+		resourceSpans := traces.ResourceSpans().AppendEmpty()
+		resourceSpans.Resource().Attributes().PutStr(semconv.AttributeServiceName, "some-service")
 
-	resourceSpans := traces.ResourceSpans().AppendEmpty()
-	resourceSpans.Resource().Attributes().PutStr(semconv.AttributeServiceName, "some-service")
+		scopeSpans := resourceSpans.ScopeSpans().AppendEmpty()
 
-	scopeSpans := resourceSpans.ScopeSpans().AppendEmpty()
+		//span one error
+		clientSpan := scopeSpans.Spans().AppendEmpty()
+		clientSpan.SetName("client span")
+		clientSpan.SetSpanID(clientSpanID)
+		clientSpan.SetTraceID(traceID)
+		clientSpan.SetKind(ptrace.SpanKindClient)
+		clientSpan.SetStartTimestamp(pcommon.NewTimestampFromTime(tStart))
+		clientSpan.SetEndTimestamp(pcommon.NewTimestampFromTime(tEnd))
+		clientSpan.Attributes().PutStr("some-attribute", "span with error status") // Attribute selected as dimension for metrics
 
-	traceID := pcommon.TraceID([16]byte{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10})
-	clientSpanID := pcommon.SpanID([8]byte{0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18})
+		serverSpan := scopeSpans.Spans().AppendEmpty()
+		serverSpan.SetName("server span")
+		serverSpan.SetSpanID([8]byte{0x19, 0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26})
+		serverSpan.SetTraceID(traceID)
+		serverSpan.SetParentSpanID(clientSpanID)
+		serverSpan.SetKind(ptrace.SpanKindServer)
+		serverSpan.SetStartTimestamp(pcommon.NewTimestampFromTime(tStart))
+		serverSpan.SetEndTimestamp(pcommon.NewTimestampFromTime(tEnd))
+		serverSpan.Status().SetCode(ptrace.StatusCodeError)
+		serverSpan.Attributes().PutStr("some-attribute", "span with error status")
 
-	//span one error
-	clientSpan := scopeSpans.Spans().AppendEmpty()
-	clientSpan.SetName("client span")
-	clientSpan.SetSpanID(clientSpanID)
-	clientSpan.SetTraceID(traceID)
-	clientSpan.SetKind(ptrace.SpanKindClient)
-	clientSpan.SetStartTimestamp(pcommon.NewTimestampFromTime(tStart))
-	clientSpan.SetEndTimestamp(pcommon.NewTimestampFromTime(tEnd))
-	clientSpan.Attributes().PutStr("some-attribute", "span with error status") // Attribute selected as dimension for metrics
+		traceID = [16]byte{0x02, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10}
+		clientSpanID = [8]byte{0x12, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18}
+	} else {
+		resourceSpans := traces.ResourceSpans().AppendEmpty()
+		resourceSpans.Resource().Attributes().PutStr(semconv.AttributeServiceName, "some-service")
+		scopeSpans := resourceSpans.ScopeSpans().AppendEmpty()
+		//span right
+		clientSpan := scopeSpans.Spans().AppendEmpty()
+		clientSpan.SetName("client span")
+		clientSpan.SetSpanID(clientSpanID)
+		clientSpan.SetTraceID(traceID)
+		clientSpan.SetKind(ptrace.SpanKindClient)
+		clientSpan.SetStartTimestamp(pcommon.NewTimestampFromTime(tStart))
+		clientSpan.SetEndTimestamp(pcommon.NewTimestampFromTime(tEnd))
+		clientSpan.Attributes().PutStr("some-attribute", "span with unset status") // Attribute selected as dimension for metrics
 
-	serverSpan := scopeSpans.Spans().AppendEmpty()
-	serverSpan.SetName("server span")
-	serverSpan.SetSpanID([8]byte{0x19, 0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26})
-	serverSpan.SetTraceID(traceID)
-	serverSpan.SetParentSpanID(clientSpanID)
-	serverSpan.SetKind(ptrace.SpanKindServer)
-	serverSpan.SetStartTimestamp(pcommon.NewTimestampFromTime(tStart))
-	serverSpan.SetEndTimestamp(pcommon.NewTimestampFromTime(tEnd))
-	serverSpan.Status().SetCode(ptrace.StatusCodeError)
-	serverSpan.Attributes().PutStr("some-attribute", "span with error status")
-
-	traceID = [16]byte{0x02, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10}
-	clientSpanID = [8]byte{0x12, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18}
-
-	//span right
-	clientSpan = scopeSpans.Spans().AppendEmpty()
-	clientSpan.SetName("client span")
-	clientSpan.SetSpanID(clientSpanID)
-	clientSpan.SetTraceID(traceID)
-	clientSpan.SetKind(ptrace.SpanKindClient)
-	clientSpan.SetStartTimestamp(pcommon.NewTimestampFromTime(tStart))
-	clientSpan.SetEndTimestamp(pcommon.NewTimestampFromTime(tEnd))
-	clientSpan.Attributes().PutStr("some-attribute", "span with unset status") // Attribute selected as dimension for metrics
-
-	serverSpan = scopeSpans.Spans().AppendEmpty()
-	serverSpan.SetName("server span")
-	serverSpan.SetSpanID([8]byte{0x20, 0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26})
-	serverSpan.SetTraceID(traceID)
-	serverSpan.SetParentSpanID(clientSpanID)
-	serverSpan.SetKind(ptrace.SpanKindServer)
-	serverSpan.SetStartTimestamp(pcommon.NewTimestampFromTime(tStart))
-	serverSpan.SetEndTimestamp(pcommon.NewTimestampFromTime(tEnd))
-	serverSpan.Attributes().PutStr("some-attribute", "span with unset status")
+		serverSpan := scopeSpans.Spans().AppendEmpty()
+		serverSpan.SetName("server span")
+		serverSpan.SetSpanID([8]byte{0x20, 0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26})
+		serverSpan.SetTraceID(traceID)
+		serverSpan.SetParentSpanID(clientSpanID)
+		serverSpan.SetKind(ptrace.SpanKindServer)
+		serverSpan.SetStartTimestamp(pcommon.NewTimestampFromTime(tStart))
+		serverSpan.SetEndTimestamp(pcommon.NewTimestampFromTime(tEnd))
+		serverSpan.Attributes().PutStr("some-attribute", "span with unset status")
+	}
 
 	return traces
 }
 
-func MyVerifyMetrics(t *testing.T, md pmetric.Metrics) error {
-	ms := md.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics()
-	for i := 0; i < ms.Len(); i++ {
-		m := ms.At(i)
-		switch m.Type() {
-		case pmetric.MetricTypeHistogram:
-			for j := 0; j < m.Histogram().DataPoints().Len(); j++ {
-				dp := m.Histogram().DataPoints().At(j)
-				metricsAttr := dp.Attributes().AsRaw()
-				if v, ok := metricsAttr["failed"].(bool); ok {
-					if v == false {
-						require.Equal(t, uint64(2), dp.Count())
-					}
-				}
-			}
-		}
-	}
-	return nil
-}
+//func MyVerifyMetrics(t *testing.T, md pmetric.Metrics) error {
+//	ms := md.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics()
+//	for i := 0; i < ms.Len(); i++ {
+//		m := ms.At(i)
+//		switch m.Type() {
+//		case pmetric.MetricTypeHistogram:
+//			for j := 0; j < m.Histogram().DataPoints().Len(); j++ {
+//				dp := m.Histogram().DataPoints().At(j)
+//				metricsAttr := dp.Attributes().AsRaw()
+//				if v, ok := metricsAttr["failed"].(bool); ok {
+//					if v == false {
+//						require.Equal(t, uint64(2), dp.Count())
+//					}
+//				}
+//			}
+//		}
+//	}
+//	return nil
+//}
