@@ -279,6 +279,12 @@ func TestProcessorConsumeTraces(t *testing.T) {
 			verifier:               verifyBadMetricsOkay,
 			traces:                 []ptrace.Traces{buildBadSampleTrace()},
 		},
+		{
+			name:                   "check metrics contain exemplars",
+			aggregationTemporality: cumulative,
+			verifier:               verifyExemplarsFunc,
+			traces:                 []ptrace.Traces{buildSampleTrace()},
+		},
 	}
 
 	for _, tc := range testcases {
@@ -538,6 +544,22 @@ func verifyMetricLabels(dp metricDataPoint, t testing.TB, seenMetricIDs map[metr
 	// Service/operation/kind should be a unique metric.
 	assert.False(t, seenMetricIDs[mID])
 	seenMetricIDs[mID] = true
+}
+
+func verifyExemplarsFunc(t testing.TB, input pmetric.Metrics) bool {
+	ms := input.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics()
+	for i := 0; i < ms.Len(); i++ {
+		m := ms.At(i)
+		if m.Type() == pmetric.MetricTypeHistogram {
+			dp := m.Histogram().DataPoints()
+			for j := 0; j < dp.Len(); j++ {
+				if dp.At(j).Exemplars().Len() == 0 {
+					return false
+				}
+			}
+		}
+	}
+	return true
 }
 
 func buildBadSampleTrace() ptrace.Traces {
