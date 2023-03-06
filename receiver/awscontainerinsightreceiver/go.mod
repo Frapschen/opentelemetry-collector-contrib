@@ -11,8 +11,8 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/aws/metrics v0.69.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/k8sconfig v0.69.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/kubelet v0.69.0
-	github.com/shirou/gopsutil/v3 v3.22.12
-	github.com/stretchr/testify v1.8.1
+	github.com/shirou/gopsutil/v3 v3.23.2
+	github.com/stretchr/testify v1.8.2
 	go.opentelemetry.io/collector v0.69.2-0.20230112233839-f2a0133bf677
 	go.opentelemetry.io/collector/component v0.69.2-0.20230112233839-f2a0133bf677
 	go.opentelemetry.io/collector/confmap v0.69.2-0.20230112233839-f2a0133bf677
@@ -112,7 +112,7 @@ require (
 	go.uber.org/multierr v1.9.0 // indirect
 	golang.org/x/net v0.5.0 // indirect
 	golang.org/x/oauth2 v0.3.0 // indirect
-	golang.org/x/sys v0.4.0 // indirect
+	golang.org/x/sys v0.5.0 // indirect
 	golang.org/x/term v0.4.0 // indirect
 	golang.org/x/text v0.6.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
