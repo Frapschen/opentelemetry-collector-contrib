@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/hashicorp/go-version v1.6.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/comparetest v0.69.0
-	github.com/stretchr/testify v1.8.1
+	github.com/stretchr/testify v1.8.2
 	github.com/testcontainers/testcontainers-go v0.17.0
 	go.mongodb.org/mongo-driver v1.11.1
 	go.opentelemetry.io/collector v0.69.2-0.20230112233839-f2a0133bf677
