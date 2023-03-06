@@ -13,7 +13,7 @@ require (
 	go.opentelemetry.io/collector/component v0.69.2-0.20230112233839-f2a0133bf677
 	go.opentelemetry.io/collector/consumer v0.69.2-0.20230112233839-f2a0133bf677
 	go.opentelemetry.io/collector/exporter/otlpexporter v0.69.2-0.20230112233839-f2a0133bf677
-	go.opentelemetry.io/collector/featuregate v0.69.2-0.20230112233839-f2a0133bf677
+	go.opentelemetry.io/collector/featuregate v0.72.0
 	go.opentelemetry.io/collector/pdata v1.0.0-rc3.0.20230112233839-f2a0133bf677
 	go.opentelemetry.io/collector/processor/batchprocessor v0.69.2-0.20230112233839-f2a0133bf677
 	go.opentelemetry.io/collector/receiver/otlpreceiver v0.69.2-0.20230112233839-f2a0133bf677
