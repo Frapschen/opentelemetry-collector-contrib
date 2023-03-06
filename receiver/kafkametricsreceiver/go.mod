@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/Shopify/sarama v1.38.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter v0.69.0
-	github.com/stretchr/testify v1.8.1
+	github.com/stretchr/testify v1.8.2
 	github.com/testcontainers/testcontainers-go v0.17.0
 	go.opentelemetry.io/collector v0.69.2-0.20230112233839-f2a0133bf677
 	go.opentelemetry.io/collector/component v0.69.2-0.20230112233839-f2a0133bf677
