@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/comparetest v0.69.0
-	github.com/stretchr/testify v1.8.1
+	github.com/stretchr/testify v1.8.2
 	github.com/tinylib/msgp v1.1.8
 	go.opencensus.io v0.24.0
 	go.opentelemetry.io/collector v0.69.2-0.20230112233839-f2a0133bf677
