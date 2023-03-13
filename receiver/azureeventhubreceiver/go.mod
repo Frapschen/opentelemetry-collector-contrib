@@ -9,12 +9,12 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/comparetest v0.69.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza v0.69.0
 	github.com/relvacode/iso8601 v1.3.0
-	github.com/stretchr/testify v1.8.1
+	github.com/stretchr/testify v1.8.2
 	go.opentelemetry.io/collector v0.69.2-0.20230112233839-f2a0133bf677
 	go.opentelemetry.io/collector/component v0.69.2-0.20230112233839-f2a0133bf677
 	go.opentelemetry.io/collector/consumer v0.69.2-0.20230112233839-f2a0133bf677
 	go.opentelemetry.io/collector/pdata v1.0.0-rc3.0.20230112233839-f2a0133bf677
-	go.opentelemetry.io/collector/semconv v0.69.2-0.20230112233839-f2a0133bf677
+	go.opentelemetry.io/collector/semconv v0.73.0
 	go.uber.org/zap v1.24.0
 )
 
