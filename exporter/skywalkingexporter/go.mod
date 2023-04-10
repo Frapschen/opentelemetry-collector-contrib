@@ -12,9 +12,9 @@ require (
 	go.opentelemetry.io/collector/confmap v0.73.0
 	go.opentelemetry.io/collector/consumer v0.73.0
 	go.opentelemetry.io/collector/exporter v0.73.0
-	go.opentelemetry.io/collector/pdata v1.0.0-rc7
+	go.opentelemetry.io/collector/pdata v1.0.0-rc9
 	go.opentelemetry.io/collector/semconv v0.73.0
-	google.golang.org/grpc v1.53.0
+	google.golang.org/grpc v1.54.0
 	skywalking.apache.org/repo/goapi v0.0.0-20211122071111-ffc517fbfe21
 )
 
@@ -50,7 +50,7 @@ require (
 	golang.org/x/sys v0.6.0 // indirect
 	golang.org/x/text v0.8.0 // indirect
 	google.golang.org/genproto v0.0.0-20230110181048-76db0878b65f // indirect
-	google.golang.org/protobuf v1.29.0 // indirect
+	google.golang.org/protobuf v1.30.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
