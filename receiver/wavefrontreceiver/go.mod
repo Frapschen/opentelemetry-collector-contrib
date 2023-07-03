@@ -14,7 +14,7 @@ require (
 	go.opentelemetry.io/collector/confmap v0.77.0
 	go.opentelemetry.io/collector/consumer v0.77.0
 	go.opentelemetry.io/collector/receiver v0.77.0
-	google.golang.org/protobuf v1.30.0
+	google.golang.org/protobuf v1.31.0
 )
 
 require (
