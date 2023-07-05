@@ -17,7 +17,7 @@ require (
 	go.opentelemetry.io/collector/consumer v0.80.1-0.20230629144634-c3f70bd1f8ea
 	go.opentelemetry.io/collector/pdata v1.0.0-rcv0013.0.20230629144634-c3f70bd1f8ea
 	go.opentelemetry.io/collector/receiver v0.80.1-0.20230629144634-c3f70bd1f8ea
-	go.opentelemetry.io/collector/semconv v0.80.1-0.20230629144634-c3f70bd1f8ea
+	go.opentelemetry.io/collector/semconv v0.81.0
 	go.uber.org/multierr v1.11.0
 	google.golang.org/grpc v1.56.1
 	google.golang.org/protobuf v1.31.0
