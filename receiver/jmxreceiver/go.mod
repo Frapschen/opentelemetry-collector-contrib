@@ -11,7 +11,7 @@ require (
 	github.com/testcontainers/testcontainers-go v0.21.0
 	go.opentelemetry.io/collector/component v0.80.1-0.20230629144634-c3f70bd1f8ea
 	go.opentelemetry.io/collector/config/confignet v0.80.1-0.20230629144634-c3f70bd1f8ea
-	go.opentelemetry.io/collector/confmap v0.80.1-0.20230629144634-c3f70bd1f8ea
+	go.opentelemetry.io/collector/confmap v0.81.0
 	go.opentelemetry.io/collector/consumer v0.80.1-0.20230629144634-c3f70bd1f8ea
 	go.opentelemetry.io/collector/exporter v0.80.1-0.20230629144634-c3f70bd1f8ea
 	go.opentelemetry.io/collector/receiver v0.80.1-0.20230629144634-c3f70bd1f8ea
@@ -44,6 +44,7 @@ require (
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/compress v1.16.7 // indirect
 	github.com/knadh/koanf v1.5.0 // indirect
+	github.com/knadh/koanf/v2 v2.0.1 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
