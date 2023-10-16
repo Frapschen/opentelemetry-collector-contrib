@@ -26,7 +26,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/testbed/mockdatareceivers/mockawsxrayreceiver v0.85.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/testbed/mockdatasenders/mockdatadogagentexporter v0.85.0
 	github.com/prometheus/common v0.44.0
-	github.com/prometheus/prometheus v0.47.0
+	github.com/prometheus/prometheus v0.47.2
 	github.com/shirou/gopsutil/v3 v3.23.8
 	github.com/stretchr/testify v1.8.4
 	go.opentelemetry.io/collector v0.85.0
