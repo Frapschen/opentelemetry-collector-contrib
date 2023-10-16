@@ -8,7 +8,7 @@ require (
 	github.com/prometheus/common v0.44.0
 	github.com/prometheus/prometheus v0.47.0
 	github.com/stretchr/testify v1.8.4
-	go.opentelemetry.io/collector/pdata v1.0.0-rcv0014
+	go.opentelemetry.io/collector/pdata v1.0.0-rcv0016
 	go.opentelemetry.io/collector/semconv v0.85.0
 	go.uber.org/multierr v1.11.0
 )
@@ -26,7 +26,7 @@ require (
 	golang.org/x/sys v0.12.0 // indirect
 	golang.org/x/text v0.13.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230717213848-3f92550aa753 // indirect
-	google.golang.org/grpc v1.58.0 // indirect
+	google.golang.org/grpc v1.58.2 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
