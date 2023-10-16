@@ -14,7 +14,7 @@ require (
 	go.opentelemetry.io/collector/confmap v0.85.0
 	go.opentelemetry.io/collector/consumer v0.85.0
 	go.opentelemetry.io/collector/featuregate v1.0.0-rcv0014
-	go.opentelemetry.io/collector/pdata v1.0.0-rcv0014
+	go.opentelemetry.io/collector/pdata v1.0.0-rcv0016
 	go.opentelemetry.io/collector/processor v0.85.0
 	go.opentelemetry.io/collector/receiver v0.85.0
 	go.opentelemetry.io/collector/receiver/otlpreceiver v0.85.0
@@ -100,7 +100,7 @@ require (
 	golang.org/x/tools v0.13.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230711160842-782d3b101e98 // indirect
-	google.golang.org/grpc v1.58.0 // indirect
+	google.golang.org/grpc v1.58.2 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
