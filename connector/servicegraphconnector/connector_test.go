@@ -6,6 +6,7 @@ package servicegraphconnector
 import (
 	"context"
 	"crypto/rand"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden"
 	"sync"
 	"testing"
 	"time"
@@ -65,32 +66,57 @@ func TestConnectorShutdown(t *testing.T) {
 }
 
 func TestConnectorConsume(t *testing.T) {
-	// Prepare
-	cfg := &Config{
-		Dimensions: []string{"some-attribute", "non-existing-attribute"},
-		Store:      StoreConfig{MaxItems: 10},
-	}
+	//// Prepare
+	//cfg := &Config{
+	//	Dimensions: []string{"some-attribute", "non-existing-attribute"},
+	//	Store:      StoreConfig{MaxItems: 10},
+	//}
+	//
+	//set := componenttest.NewNopTelemetrySettings()
+	//set.Logger = zaptest.NewLogger(t)
+	//conn := newConnector(set, cfg)
+	//conn.metricsConsumer = newMockMetricsExporter()
+	//
+	//assert.NoError(t, conn.Start(context.Background(), componenttest.NewNopHost()))
+	//
+	//// Test & verify
+	//td := buildSampleTrace(t, "val")
+	//// The assertion is part of verifyHappyCaseMetrics func.
+	//assert.NoError(t, conn.ConsumeTraces(context.Background(), td))
+	//
+	//// Force collection
+	//conn.store.Expire()
+	//md, err := conn.buildMetrics()
+	//assert.NoError(t, err)
+	//verifyHappyCaseMetrics(t, md)
+	//
+	//// Shutdown the connector
+	//assert.NoError(t, conn.Shutdown(context.Background()))
 
-	set := componenttest.NewNopTelemetrySettings()
-	set.Logger = zaptest.NewLogger(t)
-	conn := newConnector(set, cfg)
-	conn.metricsConsumer = newMockMetricsExporter()
+	t.Run("test failed label not work", func(t *testing.T) {
+		cfg := &Config{
+			Store: StoreConfig{MaxItems: 10},
+		}
+		set := componenttest.NewNopTelemetrySettings()
+		set.Logger = zaptest.NewLogger(t)
+		conn := newConnector(set, cfg)
+		conn.metricsConsumer = newMockMetricsExporter()
 
-	assert.NoError(t, conn.Start(context.Background(), componenttest.NewNopHost()))
+		assert.NoError(t, conn.Start(context.Background(), componenttest.NewNopHost()))
+		defer require.NoError(t, conn.Shutdown(context.Background()))
 
-	// Test & verify
-	td := buildSampleTrace(t, "val")
-	// The assertion is part of verifyHappyCaseMetrics func.
-	assert.NoError(t, conn.ConsumeTraces(context.Background(), td))
+		// this trace simulate two services' trace: foo, bar
+		// foo called bar three times, two success, one failed
+		td, err := golden.ReadTraces("testdata/failed-label-not-work-simple-trace.yaml")
+		assert.NoError(t, err)
+		assert.NoError(t, conn.ConsumeTraces(context.Background(), td))
 
-	// Force collection
-	conn.store.Expire()
-	md, err := conn.buildMetrics()
-	assert.NoError(t, err)
-	verifyHappyCaseMetrics(t, md)
-
-	// Shutdown the connector
-	assert.NoError(t, conn.Shutdown(context.Background()))
+		// Force collection
+		conn.store.Expire()
+		actualMetrics, err := conn.buildMetrics()
+		assert.NoError(t, err)
+		golden.WriteMetrics(t, "testdata/bug-metrics.yaml", actualMetrics)
+	})
 }
 
 func verifyHappyCaseMetrics(t *testing.T, md pmetric.Metrics) {
