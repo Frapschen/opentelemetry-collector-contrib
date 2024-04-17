@@ -22,10 +22,16 @@ func NewFactory() receiver.Factory {
 }
 
 func createDefaultConfig() component.Config {
-	cfg := scraperhelper.NewDefaultScraperControllerSettings(metadata.Type)
+	cfg := scraperhelper.NewDefaultControllerConfig()
 	cfg.CollectionInterval = 10 * time.Second
 	return &Config{
-		ScraperControllerSettings: cfg,
-		MetricsBuilderConfig:      metadata.DefaultMetricsBuilderConfig(),
+		ControllerConfig:     cfg,
+		MetricsBuilderConfig: metadata.DefaultMetricsBuilderConfig(),
 	}
+}
+
+func directDBConnectionEnabled(config *Config) bool {
+	return config.Server != "" &&
+		config.Username != "" &&
+		string(config.Password) != ""
 }

@@ -2,7 +2,10 @@
 
 package metadata
 
-import "go.opentelemetry.io/collector/confmap"
+import (
+	"go.opentelemetry.io/collector/confmap"
+	"go.opentelemetry.io/collector/filter"
+)
 
 // MetricConfig provides common config for a particular metric.
 type MetricConfig struct {
@@ -34,6 +37,7 @@ type MetricsConfig struct {
 	ContainerBlockioIoWaitTimeRecursive        MetricConfig `mapstructure:"container.blockio.io_wait_time_recursive"`
 	ContainerBlockioSectorsRecursive           MetricConfig `mapstructure:"container.blockio.sectors_recursive"`
 	ContainerCPULimit                          MetricConfig `mapstructure:"container.cpu.limit"`
+	ContainerCPULogicalCount                   MetricConfig `mapstructure:"container.cpu.logical.count"`
 	ContainerCPUShares                         MetricConfig `mapstructure:"container.cpu.shares"`
 	ContainerCPUThrottlingDataPeriods          MetricConfig `mapstructure:"container.cpu.throttling_data.periods"`
 	ContainerCPUThrottlingDataThrottledPeriods MetricConfig `mapstructure:"container.cpu.throttling_data.throttled_periods"`
@@ -49,6 +53,7 @@ type MetricsConfig struct {
 	ContainerMemoryAnon                        MetricConfig `mapstructure:"container.memory.anon"`
 	ContainerMemoryCache                       MetricConfig `mapstructure:"container.memory.cache"`
 	ContainerMemoryDirty                       MetricConfig `mapstructure:"container.memory.dirty"`
+	ContainerMemoryFails                       MetricConfig `mapstructure:"container.memory.fails"`
 	ContainerMemoryFile                        MetricConfig `mapstructure:"container.memory.file"`
 	ContainerMemoryHierarchicalMemoryLimit     MetricConfig `mapstructure:"container.memory.hierarchical_memory_limit"`
 	ContainerMemoryHierarchicalMemswLimit      MetricConfig `mapstructure:"container.memory.hierarchical_memsw_limit"`
@@ -125,6 +130,9 @@ func DefaultMetricsConfig() MetricsConfig {
 		ContainerCPULimit: MetricConfig{
 			Enabled: false,
 		},
+		ContainerCPULogicalCount: MetricConfig{
+			Enabled: false,
+		},
 		ContainerCPUShares: MetricConfig{
 			Enabled: false,
 		},
@@ -168,6 +176,9 @@ func DefaultMetricsConfig() MetricsConfig {
 			Enabled: false,
 		},
 		ContainerMemoryDirty: MetricConfig{
+			Enabled: false,
+		},
+		ContainerMemoryFails: MetricConfig{
 			Enabled: false,
 		},
 		ContainerMemoryFile: MetricConfig{
@@ -310,7 +321,9 @@ func DefaultMetricsConfig() MetricsConfig {
 
 // ResourceAttributeConfig provides common config for a particular resource attribute.
 type ResourceAttributeConfig struct {
-	Enabled bool `mapstructure:"enabled"`
+	Enabled bool            `mapstructure:"enabled"`
+	Include []filter.Config `mapstructure:"include"`
+	Exclude []filter.Config `mapstructure:"exclude"`
 
 	enabledSetByUser bool
 }
