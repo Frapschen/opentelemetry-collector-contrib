@@ -1297,7 +1297,7 @@ func TestConnectorConsumeTracesExpiredMetrics(t *testing.T) {
 		// Allow time for metrics flush to complete.
 		time.Sleep(time.Millisecond)
 
-		// Verify.
+		// Verify. expect not panic in actuated ARM runners
 		require.Equal(t, wantedDataPointCounts[i], mcon.AllMetrics()[0].DataPointCount())
 
 		// Reset so we can verify the next set of metrics from scratch.
