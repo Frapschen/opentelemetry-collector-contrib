@@ -328,7 +328,7 @@ genotelcontribcol: $(BUILDER)
 .PHONY: otelcontribcol
 otelcontribcol:
 	cd ./cmd/otelcontribcol && GO111MODULE=on CGO_ENABLED=0 $(GOCMD) build -trimpath -o ../../bin/otelcontribcol_$(GOOS)_$(GOARCH)$(EXTENSION) \
-		-tags $(GO_BUILD_TAGS) .
+		-tags $(GO_BUILD_TAGS) -ldflags $(GO_BUILD_LDFLAGS) .
 
 .PHONY: genoteltestbedcol
 genoteltestbedcol: $(BUILDER)
@@ -339,13 +339,13 @@ genoteltestbedcol: $(BUILDER)
 .PHONY: oteltestbedcol
 oteltestbedcol:
 	cd ./cmd/oteltestbedcol && GO111MODULE=on CGO_ENABLED=0 $(GOCMD) build -trimpath -o ../../bin/oteltestbedcol_$(GOOS)_$(GOARCH)$(EXTENSION) \
-		-tags $(GO_BUILD_TAGS) .
+		-tags $(GO_BUILD_TAGS) -ldflags $(GO_BUILD_LDFLAGS) .
 
 # Build the telemetrygen executable.
 .PHONY: telemetrygen
 telemetrygen:
 	cd ./cmd/telemetrygen && GO111MODULE=on CGO_ENABLED=0 $(GOCMD) build -trimpath -o ../../bin/telemetrygen_$(GOOS)_$(GOARCH)$(EXTENSION) \
-		-tags $(GO_BUILD_TAGS) .
+		-tags $(GO_BUILD_TAGS) -ldflags $(GO_BUILD_LDFLAGS) .
 
 # helper function to update the core packages in builder-config.yaml
 # input parameters are 
