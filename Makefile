@@ -330,7 +330,7 @@ otelcontribcol:
 	cd ./cmd/otelcontribcol && GO111MODULE=on CGO_ENABLED=0 $(GOCMD) build -trimpath -o ../../bin/otelcontribcol_$(GOOS)_$(GOARCH)$(EXTENSION) \
 		-tags $(GO_BUILD_TAGS) .
 
-# Build the Collector executable with out symbol table, debug information, and the DWARF symbol table.
+# Build the Collector executable without the symbol table, debug information, and the DWARF symbol table.
 .PHONY: otelcontribcollite
 otelcontribcollite:
 	cd ./cmd/otelcontribcol && GO111MODULE=on CGO_ENABLED=0 $(GOCMD) build -trimpath -o ../../bin/otelcontribcol_$(GOOS)_$(GOARCH)$(EXTENSION) \
