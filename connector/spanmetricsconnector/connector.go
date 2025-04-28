@@ -391,8 +391,11 @@ func (p *connectorImp) aggregateMetrics(traces ptrace.Traces) {
 				}
 
 				key := p.buildKey(serviceName, span, p.dimensions, resourceAttr)
-				attributesFun := func() pcommon.Map {
-					return p.buildAttributes(serviceName, span, resourceAttr, p.dimensions, ils.Scope())
+				attributesFun := func() (pcommon.Map, pcommon.Map) {
+					dpAttr := p.buildAttributes(serviceName, span, resourceAttr, p.dimensions, ils.Scope())
+					rsAttr := pcommon.NewMap()
+					addResourceAttributes(&rsAttr, p.dimensions, ptrace.NewSpan(), resourceAttr)
+					return dpAttr, rsAttr
 				}
 
 				// aggregate sums metrics
@@ -424,13 +427,16 @@ func (p *connectorImp) aggregateMetrics(traces ptrace.Traces) {
 						resourceAttr.CopyTo(rscAndEventAttrs)
 						// We cannot use CopyTo because it overrides the existing keys.
 						event.Attributes().Range(func(k string, v pcommon.Value) bool {
-							rscAndEventAttrs.PutStr(k, v.Str())
+							v.CopyTo(rscAndEventAttrs.PutEmpty(k))
 							return true
 						})
 
 						eKey := p.buildKey(serviceName, span, eDimensions, rscAndEventAttrs)
-						attributesFun = func() pcommon.Map {
-							return p.buildAttributes(serviceName, span, rscAndEventAttrs, eDimensions, ils.Scope())
+						attributesFun = func() (pcommon.Map, pcommon.Map) {
+							dpAttr := p.buildAttributes(serviceName, span, resourceAttr, p.dimensions, ils.Scope())
+							rsAttr := pcommon.NewMap()
+							addResourceAttributes(&rsAttr, p.dimensions, ptrace.NewSpan(), resourceAttr)
+							return dpAttr, rsAttr
 						}
 						e, eventLimitReached := events.GetOrCreate(eKey, attributesFun, startTimestamp)
 						if !eventLimitReached && p.config.Exemplars.Enabled && !span.TraceID().IsEmpty() {

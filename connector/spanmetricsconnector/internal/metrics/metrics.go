@@ -67,7 +67,7 @@ type exponentialHistogram struct {
 	startTimestamp pcommon.Timestamp
 }
 
-type BuildAttributesFun func() pcommon.Map
+type BuildAttributesFun func() (pcommon.Map, pcommon.Map)
 
 func NewExponentialHistogramMetrics(maxSize int32, maxExemplarCount *int, cardinalityLimit int) HistogramMetrics {
 	return &exponentialHistogramMetrics{
@@ -95,6 +95,7 @@ func (m *explicitHistogramMetrics) GetOrCreate(key Key, attributesFun BuildAttri
 	limitReached := false
 	h, ok := m.metrics[key]
 	if !ok {
+		dpAttr, rsAttr := attributesFun()
 		var attributes pcommon.Map
 		if m.IsCardinalityLimitReached() {
 			limitReached = true
@@ -106,10 +107,10 @@ func (m *explicitHistogramMetrics) GetOrCreate(key Key, attributesFun BuildAttri
 				return h, limitReached
 			}
 
-			attributes = pcommon.NewMap()
+			attributes = rsAttr
 			attributes.PutBool(overflowKey, true)
 		} else {
-			attributes = attributesFun()
+			attributes = dpAttr
 		}
 
 		h = &explicitHistogram{
@@ -171,6 +172,7 @@ func (m *exponentialHistogramMetrics) GetOrCreate(key Key, attributesFun BuildAt
 		)
 		histogram.Init(cfg)
 
+		dpAttr, rsAttr := attributesFun()
 		var attributes pcommon.Map
 		if m.IsCardinalityLimitReached() {
 			limitReached = true
@@ -182,10 +184,10 @@ func (m *exponentialHistogramMetrics) GetOrCreate(key Key, attributesFun BuildAt
 				return h, limitReached
 			}
 
-			attributes = pcommon.NewMap()
+			attributes = rsAttr
 			attributes.PutBool(overflowKey, true)
 		} else {
-			attributes = attributesFun()
+			attributes = dpAttr
 		}
 
 		h = &exponentialHistogram{
@@ -334,6 +336,7 @@ func (m *SumMetrics) GetOrCreate(key Key, attributesFun BuildAttributesFun, star
 	limitReached := false
 	s, ok := m.metrics[key]
 	if !ok {
+		dpAttr, rsAttr := attributesFun()
 		var attributes pcommon.Map
 		// check when new key coming
 		if m.IsCardinalityLimitReached() {
@@ -346,10 +349,10 @@ func (m *SumMetrics) GetOrCreate(key Key, attributesFun BuildAttributesFun, star
 				return s, limitReached
 			}
 
-			attributes = pcommon.NewMap()
+			attributes = rsAttr
 			attributes.PutBool(overflowKey, true)
 		} else {
-			attributes = attributesFun()
+			attributes = dpAttr
 		}
 
 		s = &Sum{
