@@ -8,6 +8,7 @@ package journald
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
 	"os/exec"
 	"testing"
@@ -16,6 +17,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/component/componenttest"
+	"go.uber.org/zap"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/entry"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator"
@@ -23,12 +26,13 @@ import (
 )
 
 type fakeJournaldCmd struct {
-	exitError *exec.ExitError
-	stdErr    string
+	startError error
+	exitError  *exec.ExitError
+	stdErr     string
 }
 
 func (f *fakeJournaldCmd) Start() error {
-	return nil
+	return f.startError
 }
 
 func (f *fakeJournaldCmd) StdoutPipe() (io.ReadCloser, error) {
@@ -55,7 +59,8 @@ func TestInputJournald(t *testing.T) {
 	cfg := NewConfigWithID("my_journald_input")
 	cfg.OutputIDs = []string{"output"}
 
-	op, err := cfg.Build(testutil.Logger(t))
+	set := componenttest.NewNopTelemetrySettings()
+	op, err := cfg.Build(set)
 	require.NoError(t, err)
 
 	mockOutput := testutil.NewMockOperator("output")
@@ -71,8 +76,7 @@ func TestInputJournald(t *testing.T) {
 		return &fakeJournaldCmd{}
 	}
 
-	err = op.Start(testutil.NewUnscopedMockPersister())
-	assert.EqualError(t, err, "journalctl command exited")
+	require.NoError(t, op.Start(testutil.NewUnscopedMockPersister()))
 	defer func() {
 		require.NoError(t, op.Stop())
 	}()
@@ -197,6 +201,13 @@ func TestBuildConfig(t *testing.T) {
 			Expected: []string{"--utc", "--output=json", "--follow", "--priority", "info", "--grep", "test_grep"},
 		},
 		{
+			Name: "namespace",
+			Config: func(cfg *Config) {
+				cfg.Namespace = "foo"
+			},
+			Expected: []string{"--utc", "--output=json", "--follow", "--priority", "info", "--namespace", "foo"},
+		},
+		{
 			Name: "dmesg",
 			Config: func(cfg *Config) {
 				cfg.Dmesg = true
@@ -233,7 +244,9 @@ func TestInputJournaldError(t *testing.T) {
 	cfg := NewConfigWithID("my_journald_input")
 	cfg.OutputIDs = []string{"output"}
 
-	op, err := cfg.Build(testutil.Logger(t))
+	set := componenttest.NewNopTelemetrySettings()
+	set.Logger, _ = zap.NewDevelopment()
+	op, err := cfg.Build(set)
 	require.NoError(t, err)
 
 	mockOutput := testutil.NewMockOperator("output")
@@ -247,20 +260,12 @@ func TestInputJournaldError(t *testing.T) {
 
 	op.(*Input).newCmd = func(_ context.Context, _ []byte) cmd {
 		return &fakeJournaldCmd{
-			exitError: &exec.ExitError{},
-			stdErr:    "stderr output\n",
+			exitError:  &exec.ExitError{},
+			startError: errors.New("fail to start"),
 		}
 	}
 
 	err = op.Start(testutil.NewUnscopedMockPersister())
-	assert.EqualError(t, err, "journalctl command failed (<nil>): stderr output\n")
-	defer func() {
-		require.NoError(t, op.Stop())
-	}()
-
-	select {
-	case <-received:
-	case <-time.After(time.Second):
-		require.FailNow(t, "Timed out waiting for entry to be read")
-	}
+	assert.EqualError(t, err, "journalctl command failed: start journalctl: fail to start")
+	require.NoError(t, op.Stop())
 }

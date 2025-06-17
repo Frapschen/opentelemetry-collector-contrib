@@ -3,10 +3,11 @@
 package assignkeys // import "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator/transformer/assignkeys"
 
 import (
+	"errors"
 	"fmt"
 
+	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/featuregate"
-	"go.uber.org/zap"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/entry"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator"
@@ -17,7 +18,7 @@ const operatorType = "assign_keys"
 
 var assignKeysTransformerFeatureGate = featuregate.GlobalRegistry().MustRegister(
 	"logs.assignKeys",
-	featuregate.StageAlpha,
+	featuregate.StageBeta,
 	featuregate.WithRegisterDescription("When enabled, allows usage of `assign_keys` transformer."),
 	featuregate.WithRegisterReferenceURL("https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/30321"),
 )
@@ -48,14 +49,14 @@ type Config struct {
 }
 
 // Build will build an assign_keys operator from the supplied configuration
-func (c Config) Build(logger *zap.SugaredLogger) (operator.Operator, error) {
-	transformerOperator, err := c.TransformerConfig.Build(logger)
+func (c Config) Build(set component.TelemetrySettings) (operator.Operator, error) {
+	transformerOperator, err := c.TransformerConfig.Build(set)
 	if err != nil {
 		return nil, err
 	}
 
 	if len(c.Keys) == 0 {
-		return nil, fmt.Errorf("assign_keys missing required field keys")
+		return nil, errors.New("assign_keys missing required field keys")
 	}
 
 	if _, ok := c.Field.FieldInterface.(entry.BodyField); ok {

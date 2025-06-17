@@ -35,6 +35,13 @@ func (rb *ResourceBuilder) SetContainerImageName(val string) {
 	}
 }
 
+// SetContainerImageRepoDigests sets provided value as "container.image.repo_digests" attribute.
+func (rb *ResourceBuilder) SetContainerImageRepoDigests(val []any) {
+	if rb.config.ContainerImageRepoDigests.Enabled {
+		rb.res.Attributes().PutEmptySlice("container.image.repo_digests").FromRaw(val)
+	}
+}
+
 // SetContainerImageTag sets provided value as "container.image.tag" attribute.
 func (rb *ResourceBuilder) SetContainerImageTag(val string) {
 	if rb.config.ContainerImageTag.Enabled {
@@ -133,6 +140,13 @@ func (rb *ResourceBuilder) SetK8sPodHostname(val string) {
 	}
 }
 
+// SetK8sPodIP sets provided value as "k8s.pod.ip" attribute.
+func (rb *ResourceBuilder) SetK8sPodIP(val string) {
+	if rb.config.K8sPodIP.Enabled {
+		rb.res.Attributes().PutStr("k8s.pod.ip", val)
+	}
+}
+
 // SetK8sPodName sets provided value as "k8s.pod.name" attribute.
 func (rb *ResourceBuilder) SetK8sPodName(val string) {
 	if rb.config.K8sPodName.Enabled {
@@ -179,6 +193,34 @@ func (rb *ResourceBuilder) SetK8sStatefulsetName(val string) {
 func (rb *ResourceBuilder) SetK8sStatefulsetUID(val string) {
 	if rb.config.K8sStatefulsetUID.Enabled {
 		rb.res.Attributes().PutStr("k8s.statefulset.uid", val)
+	}
+}
+
+// SetServiceInstanceID sets provided value as "service.instance.id" attribute.
+func (rb *ResourceBuilder) SetServiceInstanceID(val string) {
+	if rb.config.ServiceInstanceID.Enabled {
+		rb.res.Attributes().PutStr("service.instance.id", val)
+	}
+}
+
+// SetServiceName sets provided value as "service.name" attribute.
+func (rb *ResourceBuilder) SetServiceName(val string) {
+	if rb.config.ServiceName.Enabled {
+		rb.res.Attributes().PutStr("service.name", val)
+	}
+}
+
+// SetServiceNamespace sets provided value as "service.namespace" attribute.
+func (rb *ResourceBuilder) SetServiceNamespace(val string) {
+	if rb.config.ServiceNamespace.Enabled {
+		rb.res.Attributes().PutStr("service.namespace", val)
+	}
+}
+
+// SetServiceVersion sets provided value as "service.version" attribute.
+func (rb *ResourceBuilder) SetServiceVersion(val string) {
+	if rb.config.ServiceVersion.Enabled {
+		rb.res.Attributes().PutStr("service.version", val)
 	}
 }
 

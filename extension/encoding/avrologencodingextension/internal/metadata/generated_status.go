@@ -4,22 +4,13 @@ package metadata
 
 import (
 	"go.opentelemetry.io/collector/component"
-	"go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/trace"
 )
 
 var (
-	Type = component.MustNewType("avro_log_encoding")
+	Type      = component.MustNewType("avro_log_encoding")
+	ScopeName = "github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding/avrologencodingextension"
 )
 
 const (
 	ExtensionStability = component.StabilityLevelDevelopment
 )
-
-func Meter(settings component.TelemetrySettings) metric.Meter {
-	return settings.MeterProvider.Meter("otelcol/avrologencoding")
-}
-
-func Tracer(settings component.TelemetrySettings) trace.Tracer {
-	return settings.TracerProvider.Tracer("otelcol/avrologencoding")
-}

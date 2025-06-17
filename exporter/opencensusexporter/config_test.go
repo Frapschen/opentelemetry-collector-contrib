@@ -16,6 +16,7 @@ import (
 	"go.opentelemetry.io/collector/config/configretry"
 	"go.opentelemetry.io/collector/config/configtls"
 	"go.opentelemetry.io/collector/confmap/confmaptest"
+	"go.opentelemetry.io/collector/confmap/xconfmap"
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/opencensusexporter/internal/metadata"
@@ -44,7 +45,7 @@ func TestLoadConfig(t *testing.T) {
 					MaxInterval:     1 * time.Minute,
 					MaxElapsedTime:  10 * time.Minute,
 				},
-				QueueSettings: exporterhelper.QueueSettings{
+				QueueSettings: exporterhelper.QueueBatchConfig{
 					Enabled:      true,
 					NumConsumers: 2,
 					QueueSize:    10,
@@ -57,7 +58,7 @@ func TestLoadConfig(t *testing.T) {
 					},
 					Endpoint:    "1.2.3.4:1234",
 					Compression: "gzip",
-					TLSSetting: configtls.ClientConfig{
+					TLS: configtls.ClientConfig{
 						Config: configtls.Config{
 							CAFile: "/var/lib/mycert.pem",
 						},
@@ -83,9 +84,9 @@ func TestLoadConfig(t *testing.T) {
 
 			sub, err := cm.Sub(tt.id.String())
 			require.NoError(t, err)
-			require.NoError(t, component.UnmarshalConfig(sub, cfg))
+			require.NoError(t, sub.Unmarshal(cfg))
 
-			assert.NoError(t, component.ValidateConfig(cfg))
+			assert.NoError(t, xconfmap.Validate(cfg))
 			assert.Equal(t, tt.expected, cfg)
 		})
 	}

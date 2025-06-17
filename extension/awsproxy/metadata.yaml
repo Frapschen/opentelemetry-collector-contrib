@@ -1,5 +1,4 @@
 type: awsproxy
-scope_name: otelcol/awsproxy
 
 status:
   class: extension
@@ -11,3 +10,5 @@ status:
 
 tests:
   skip_lifecycle: true
+  goleak:
+    skip: true

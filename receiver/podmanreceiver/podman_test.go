@@ -7,7 +7,6 @@ package podmanreceiver
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -19,36 +18,36 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.opentelemetry.io/collector/receiver/scraperhelper"
+	"go.opentelemetry.io/collector/scraper/scraperhelper"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest/observer"
 )
 
-type MockClient struct {
+type mockClient struct {
 	PingF   func(context.Context) error
 	StatsF  func(context.Context, url.Values) ([]containerStats, error)
 	ListF   func(context.Context, url.Values) ([]container, error)
 	EventsF func(context.Context, url.Values) (<-chan event, <-chan error)
 }
 
-func (c *MockClient) ping(ctx context.Context) error {
+func (c *mockClient) ping(ctx context.Context) error {
 	return c.PingF(ctx)
 }
 
-func (c *MockClient) stats(ctx context.Context, options url.Values) ([]containerStats, error) {
+func (c *mockClient) stats(ctx context.Context, options url.Values) ([]containerStats, error) {
 	return c.StatsF(ctx, options)
 }
 
-func (c *MockClient) list(ctx context.Context, options url.Values) ([]container, error) {
+func (c *mockClient) list(ctx context.Context, options url.Values) ([]container, error) {
 	return c.ListF(ctx, options)
 }
 
-func (c *MockClient) events(ctx context.Context, options url.Values) (<-chan event, <-chan error) {
+func (c *mockClient) events(ctx context.Context, options url.Values) (<-chan event, <-chan error) {
 	return c.EventsF(ctx, options)
 }
 
-var baseClient = MockClient{
+var baseClient = mockClient{
 	PingF: func(context.Context) error {
 		return nil
 	},
@@ -69,7 +68,7 @@ func TestWatchingTimeouts(t *testing.T) {
 	defer os.Remove(addr)
 
 	config := &Config{
-		Endpoint: fmt.Sprintf("unix://%s", addr),
+		Endpoint: "unix://" + addr,
 		ControllerConfig: scraperhelper.ControllerConfig{
 			Timeout: 50 * time.Millisecond,
 		},
@@ -92,8 +91,7 @@ func TestWatchingTimeouts(t *testing.T) {
 	defer fetchCancel()
 
 	container, err := cli.fetchContainerStats(ctx, container{})
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), expectedError)
+	assert.ErrorContains(t, err, expectedError)
 	assert.Empty(t, container)
 
 	assert.GreaterOrEqual(
@@ -122,7 +120,7 @@ func TestEventLoopHandlesError(t *testing.T) {
 
 	observed, logs := observer.New(zapcore.WarnLevel)
 	config := &Config{
-		Endpoint: fmt.Sprintf("unix://%s", addr),
+		Endpoint: "unix://" + addr,
 		ControllerConfig: scraperhelper.ControllerConfig{
 			Timeout: 50 * time.Millisecond,
 		},
@@ -176,7 +174,7 @@ func TestEventLoopHandles(t *testing.T) {
 	cli := newContainerScraper(&eventClient, zap.NewNop(), &Config{})
 	assert.NotNil(t, cli)
 
-	assert.Equal(t, 0, len(cli.containers))
+	assert.Empty(t, cli.containers)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	go cli.containerEventLoop(ctx)
@@ -187,7 +185,7 @@ func TestEventLoopHandles(t *testing.T) {
 	assert.Eventually(t, func() bool {
 		cli.containersLock.Lock()
 		defer cli.containersLock.Unlock()
-		return assert.Equal(t, 1, len(cli.containers))
+		return assert.Len(t, cli.containers, 1)
 	}, 1*time.Second, 1*time.Millisecond, "failed to update containers list.")
 
 	eventChan <- event{ID: "c1", Status: "died"}
@@ -195,7 +193,7 @@ func TestEventLoopHandles(t *testing.T) {
 	assert.Eventually(t, func() bool {
 		cli.containersLock.Lock()
 		defer cli.containersLock.Unlock()
-		return assert.Equal(t, 0, len(cli.containers))
+		return assert.Empty(t, cli.containers)
 	}, 1*time.Second, 1*time.Millisecond, "failed to update containers list.")
 }
 
@@ -210,10 +208,10 @@ func TestInspectAndPersistContainer(t *testing.T) {
 	cli := newContainerScraper(&inspectClient, zap.NewNop(), &Config{})
 	assert.NotNil(t, cli)
 
-	assert.Equal(t, 0, len(cli.containers))
+	assert.Empty(t, cli.containers)
 
 	stats, ok := cli.inspectAndPersistContainer(context.Background(), "c1")
 	assert.True(t, ok)
 	assert.NotNil(t, stats)
-	assert.Equal(t, 1, len(cli.containers))
+	assert.Len(t, cli.containers, 1)
 }

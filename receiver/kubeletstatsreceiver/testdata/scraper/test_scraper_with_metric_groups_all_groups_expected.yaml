@@ -16,14 +16,14 @@ resourceMetrics:
                   timeUnixNano: "2000000"
               isMonotonic: true
             unit: s
-          - description: Node CPU utilization
+          - description: Total CPU usage (sum of all cores per second) averaged over the sample window
             gauge:
               dataPoints:
                 - asDouble: 0.165737329
                   startTimeUnixNano: "1000000"
                   timeUnixNano: "2000000"
-            name: k8s.node.cpu.utilization
-            unit: "1"
+            name: k8s.node.cpu.usage
+            unit: "{cpu}"
           - description: Node filesystem available
             gauge:
               dataPoints:
@@ -151,7 +151,7 @@ resourceMetrics:
               isMonotonic: true
             unit: By
         scope:
-          name: otelcol/kubeletstatsreceiver
+          name: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kubeletstatsreceiver
           version: latest
   - resource:
       attributes:
@@ -176,14 +176,14 @@ resourceMetrics:
                   timeUnixNano: "2000000"
               isMonotonic: true
             unit: s
-          - description: Pod CPU utilization
+          - description: Total CPU usage (sum of all cores per second) averaged over the sample window
             gauge:
               dataPoints:
                 - asDouble: 0
                   startTimeUnixNano: "1000000"
                   timeUnixNano: "2000000"
-            name: k8s.pod.cpu.utilization
-            unit: "1"
+            name: k8s.pod.cpu.usage
+            unit: "{cpu}"
           - description: Pod filesystem available
             gauge:
               dataPoints:
@@ -311,7 +311,7 @@ resourceMetrics:
               isMonotonic: true
             unit: By
         scope:
-          name: otelcol/kubeletstatsreceiver
+          name: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kubeletstatsreceiver
           version: latest
   - resource:
       attributes:
@@ -336,14 +336,14 @@ resourceMetrics:
                   timeUnixNano: "2000000"
               isMonotonic: true
             unit: s
-          - description: Pod CPU utilization
+          - description: Total CPU usage (sum of all cores per second) averaged over the sample window
             gauge:
               dataPoints:
                 - asDouble: 0.003494461
                   startTimeUnixNano: "1000000"
                   timeUnixNano: "2000000"
-            name: k8s.pod.cpu.utilization
-            unit: "1"
+            name: k8s.pod.cpu.usage
+            unit: "{cpu}"
           - description: Pod filesystem available
             gauge:
               dataPoints:
@@ -471,7 +471,7 @@ resourceMetrics:
               isMonotonic: true
             unit: By
         scope:
-          name: otelcol/kubeletstatsreceiver
+          name: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kubeletstatsreceiver
           version: latest
   - resource:
       attributes:
@@ -496,14 +496,14 @@ resourceMetrics:
                   timeUnixNano: "2000000"
               isMonotonic: true
             unit: s
-          - description: Pod CPU utilization
+          - description: Total CPU usage (sum of all cores per second) averaged over the sample window
             gauge:
               dataPoints:
                 - asDouble: 0.003430175
                   startTimeUnixNano: "1000000"
                   timeUnixNano: "2000000"
-            name: k8s.pod.cpu.utilization
-            unit: "1"
+            name: k8s.pod.cpu.usage
+            unit: "{cpu}"
           - description: Pod filesystem available
             gauge:
               dataPoints:
@@ -631,7 +631,7 @@ resourceMetrics:
               isMonotonic: true
             unit: By
         scope:
-          name: otelcol/kubeletstatsreceiver
+          name: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kubeletstatsreceiver
           version: latest
   - resource:
       attributes:
@@ -656,14 +656,14 @@ resourceMetrics:
                   timeUnixNano: "2000000"
               isMonotonic: true
             unit: s
-          - description: Pod CPU utilization
+          - description: Total CPU usage (sum of all cores per second) averaged over the sample window
             gauge:
               dataPoints:
                 - asDouble: 0.019806671
                   startTimeUnixNano: "1000000"
                   timeUnixNano: "2000000"
-            name: k8s.pod.cpu.utilization
-            unit: "1"
+            name: k8s.pod.cpu.usage
+            unit: "{cpu}"
           - description: Pod filesystem available
             gauge:
               dataPoints:
@@ -791,7 +791,7 @@ resourceMetrics:
               isMonotonic: true
             unit: By
         scope:
-          name: otelcol/kubeletstatsreceiver
+          name: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kubeletstatsreceiver
           version: latest
   - resource:
       attributes:
@@ -816,14 +816,14 @@ resourceMetrics:
                   timeUnixNano: "2000000"
               isMonotonic: true
             unit: s
-          - description: Pod CPU utilization
+          - description: Total CPU usage (sum of all cores per second) averaged over the sample window
             gauge:
               dataPoints:
                 - asDouble: 0.046223592
                   startTimeUnixNano: "1000000"
                   timeUnixNano: "2000000"
-            name: k8s.pod.cpu.utilization
-            unit: "1"
+            name: k8s.pod.cpu.usage
+            unit: "{cpu}"
           - description: Pod filesystem available
             gauge:
               dataPoints:
@@ -951,7 +951,7 @@ resourceMetrics:
               isMonotonic: true
             unit: By
         scope:
-          name: otelcol/kubeletstatsreceiver
+          name: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kubeletstatsreceiver
           version: latest
   - resource:
       attributes:
@@ -976,14 +976,14 @@ resourceMetrics:
                   timeUnixNano: "2000000"
               isMonotonic: true
             unit: s
-          - description: Pod CPU utilization
+          - description: Total CPU usage (sum of all cores per second) averaged over the sample window
             gauge:
               dataPoints:
                 - asDouble: 0.018113404
                   startTimeUnixNano: "1000000"
                   timeUnixNano: "2000000"
-            name: k8s.pod.cpu.utilization
-            unit: "1"
+            name: k8s.pod.cpu.usage
+            unit: "{cpu}"
           - description: Pod filesystem available
             gauge:
               dataPoints:
@@ -1111,7 +1111,7 @@ resourceMetrics:
               isMonotonic: true
             unit: By
         scope:
-          name: otelcol/kubeletstatsreceiver
+          name: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kubeletstatsreceiver
           version: latest
   - resource:
       attributes:
@@ -1136,14 +1136,14 @@ resourceMetrics:
                   timeUnixNano: "2000000"
               isMonotonic: true
             unit: s
-          - description: Pod CPU utilization
+          - description: Total CPU usage (sum of all cores per second) averaged over the sample window
             gauge:
               dataPoints:
                 - asDouble: 0.000276428
                   startTimeUnixNano: "1000000"
                   timeUnixNano: "2000000"
-            name: k8s.pod.cpu.utilization
-            unit: "1"
+            name: k8s.pod.cpu.usage
+            unit: "{cpu}"
           - description: Pod filesystem available
             gauge:
               dataPoints:
@@ -1271,7 +1271,7 @@ resourceMetrics:
               isMonotonic: true
             unit: By
         scope:
-          name: otelcol/kubeletstatsreceiver
+          name: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kubeletstatsreceiver
           version: latest
   - resource:
       attributes:
@@ -1296,14 +1296,14 @@ resourceMetrics:
                   timeUnixNano: "2000000"
               isMonotonic: true
             unit: s
-          - description: Pod CPU utilization
+          - description: Total CPU usage (sum of all cores per second) averaged over the sample window
             gauge:
               dataPoints:
                 - asDouble: 0.003620103
                   startTimeUnixNano: "1000000"
                   timeUnixNano: "2000000"
-            name: k8s.pod.cpu.utilization
-            unit: "1"
+            name: k8s.pod.cpu.usage
+            unit: "{cpu}"
           - description: Pod filesystem available
             gauge:
               dataPoints:
@@ -1431,7 +1431,7 @@ resourceMetrics:
               isMonotonic: true
             unit: By
         scope:
-          name: otelcol/kubeletstatsreceiver
+          name: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kubeletstatsreceiver
           version: latest
   - resource:
       attributes:
@@ -1456,14 +1456,14 @@ resourceMetrics:
                   timeUnixNano: "2000000"
               isMonotonic: true
             unit: s
-          - description: Pod CPU utilization
+          - description: Total CPU usage (sum of all cores per second) averaged over the sample window
             gauge:
               dataPoints:
                 - asDouble: 0.000378421
                   startTimeUnixNano: "1000000"
                   timeUnixNano: "2000000"
-            name: k8s.pod.cpu.utilization
-            unit: "1"
+            name: k8s.pod.cpu.usage
+            unit: "{cpu}"
           - description: Pod filesystem available
             gauge:
               dataPoints:
@@ -1591,7 +1591,7 @@ resourceMetrics:
               isMonotonic: true
             unit: By
         scope:
-          name: otelcol/kubeletstatsreceiver
+          name: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kubeletstatsreceiver
           version: latest
   - resource:
       attributes:
@@ -1650,7 +1650,7 @@ resourceMetrics:
             name: k8s.volume.inodes.used
             unit: "1"
         scope:
-          name: otelcol/kubeletstatsreceiver
+          name: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kubeletstatsreceiver
           version: latest
   - resource:
       attributes:
@@ -1709,7 +1709,7 @@ resourceMetrics:
             name: k8s.volume.inodes.used
             unit: "1"
         scope:
-          name: otelcol/kubeletstatsreceiver
+          name: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kubeletstatsreceiver
           version: latest
   - resource:
       attributes:
@@ -1768,7 +1768,7 @@ resourceMetrics:
             name: k8s.volume.inodes.used
             unit: "1"
         scope:
-          name: otelcol/kubeletstatsreceiver
+          name: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kubeletstatsreceiver
           version: latest
   - resource:
       attributes:
@@ -1827,7 +1827,7 @@ resourceMetrics:
             name: k8s.volume.inodes.used
             unit: "1"
         scope:
-          name: otelcol/kubeletstatsreceiver
+          name: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kubeletstatsreceiver
           version: latest
   - resource:
       attributes:
@@ -1886,7 +1886,7 @@ resourceMetrics:
             name: k8s.volume.inodes.used
             unit: "1"
         scope:
-          name: otelcol/kubeletstatsreceiver
+          name: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kubeletstatsreceiver
           version: latest
   - resource:
       attributes:
@@ -1945,7 +1945,7 @@ resourceMetrics:
             name: k8s.volume.inodes.used
             unit: "1"
         scope:
-          name: otelcol/kubeletstatsreceiver
+          name: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kubeletstatsreceiver
           version: latest
   - resource:
       attributes:
@@ -2004,7 +2004,7 @@ resourceMetrics:
             name: k8s.volume.inodes.used
             unit: "1"
         scope:
-          name: otelcol/kubeletstatsreceiver
+          name: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kubeletstatsreceiver
           version: latest
   - resource:
       attributes:
@@ -2063,7 +2063,7 @@ resourceMetrics:
             name: k8s.volume.inodes.used
             unit: "1"
         scope:
-          name: otelcol/kubeletstatsreceiver
+          name: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kubeletstatsreceiver
           version: latest
   - resource:
       attributes:
@@ -2094,14 +2094,14 @@ resourceMetrics:
                   timeUnixNano: "2000000"
               isMonotonic: true
             unit: s
-          - description: Container CPU utilization
+          - description: Total CPU usage (sum of all cores per second) averaged over the sample window
             gauge:
               dataPoints:
                 - asDouble: 0.003438625
                   startTimeUnixNano: "1000000"
                   timeUnixNano: "2000000"
-            name: container.cpu.utilization
-            unit: "1"
+            name: container.cpu.usage
+            unit: "{cpu}"
           - description: Container filesystem available
             gauge:
               dataPoints:
@@ -2175,7 +2175,7 @@ resourceMetrics:
             name: container.memory.working_set
             unit: By
         scope:
-          name: otelcol/kubeletstatsreceiver
+          name: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kubeletstatsreceiver
           version: latest
   - resource:
       attributes:
@@ -2206,14 +2206,14 @@ resourceMetrics:
                   timeUnixNano: "2000000"
               isMonotonic: true
             unit: s
-          - description: Container CPU utilization
+          - description: Total CPU usage (sum of all cores per second) averaged over the sample window
             gauge:
               dataPoints:
                 - asDouble: 0.000396945
                   startTimeUnixNano: "1000000"
                   timeUnixNano: "2000000"
-            name: container.cpu.utilization
-            unit: "1"
+            name: container.cpu.usage
+            unit: "{cpu}"
           - description: Container filesystem available
             gauge:
               dataPoints:
@@ -2287,7 +2287,7 @@ resourceMetrics:
             name: container.memory.working_set
             unit: By
         scope:
-          name: otelcol/kubeletstatsreceiver
+          name: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kubeletstatsreceiver
           version: latest
   - resource:
       attributes:
@@ -2318,14 +2318,14 @@ resourceMetrics:
                   timeUnixNano: "2000000"
               isMonotonic: true
             unit: s
-          - description: Container CPU utilization
+          - description: Total CPU usage (sum of all cores per second) averaged over the sample window
             gauge:
               dataPoints:
                 - asDouble: 0.004558032
                   startTimeUnixNano: "1000000"
                   timeUnixNano: "2000000"
-            name: container.cpu.utilization
-            unit: "1"
+            name: container.cpu.usage
+            unit: "{cpu}"
           - description: Container filesystem available
             gauge:
               dataPoints:
@@ -2399,7 +2399,7 @@ resourceMetrics:
             name: container.memory.working_set
             unit: By
         scope:
-          name: otelcol/kubeletstatsreceiver
+          name: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kubeletstatsreceiver
           version: latest
   - resource:
       attributes:
@@ -2430,14 +2430,14 @@ resourceMetrics:
                   timeUnixNano: "2000000"
               isMonotonic: true
             unit: s
-          - description: Container CPU utilization
+          - description: Total CPU usage (sum of all cores per second) averaged over the sample window
             gauge:
               dataPoints:
                 - asDouble: 0.046144879
                   startTimeUnixNano: "1000000"
                   timeUnixNano: "2000000"
-            name: container.cpu.utilization
-            unit: "1"
+            name: container.cpu.usage
+            unit: "{cpu}"
           - description: Container filesystem available
             gauge:
               dataPoints:
@@ -2511,7 +2511,7 @@ resourceMetrics:
             name: container.memory.working_set
             unit: By
         scope:
-          name: otelcol/kubeletstatsreceiver
+          name: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kubeletstatsreceiver
           version: latest
   - resource:
       attributes:
@@ -2542,14 +2542,14 @@ resourceMetrics:
                   timeUnixNano: "2000000"
               isMonotonic: true
             unit: s
-          - description: Container CPU utilization
+          - description: Total CPU usage (sum of all cores per second) averaged over the sample window
             gauge:
               dataPoints:
                 - asDouble: 0.019865291
                   startTimeUnixNano: "1000000"
                   timeUnixNano: "2000000"
-            name: container.cpu.utilization
-            unit: "1"
+            name: container.cpu.usage
+            unit: "{cpu}"
           - description: Container filesystem available
             gauge:
               dataPoints:
@@ -2623,7 +2623,7 @@ resourceMetrics:
             name: container.memory.working_set
             unit: By
         scope:
-          name: otelcol/kubeletstatsreceiver
+          name: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kubeletstatsreceiver
           version: latest
   - resource:
       attributes:
@@ -2654,14 +2654,14 @@ resourceMetrics:
                   timeUnixNano: "2000000"
               isMonotonic: true
             unit: s
-          - description: Container CPU utilization
+          - description: Total CPU usage (sum of all cores per second) averaged over the sample window
             gauge:
               dataPoints:
                 - asDouble: 0.00032689
                   startTimeUnixNano: "1000000"
                   timeUnixNano: "2000000"
-            name: container.cpu.utilization
-            unit: "1"
+            name: container.cpu.usage
+            unit: "{cpu}"
           - description: Container filesystem available
             gauge:
               dataPoints:
@@ -2735,7 +2735,7 @@ resourceMetrics:
             name: container.memory.working_set
             unit: By
         scope:
-          name: otelcol/kubeletstatsreceiver
+          name: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kubeletstatsreceiver
           version: latest
   - resource:
       attributes:
@@ -2766,14 +2766,14 @@ resourceMetrics:
                   timeUnixNano: "2000000"
               isMonotonic: true
             unit: s
-          - description: Container CPU utilization
+          - description: Total CPU usage (sum of all cores per second) averaged over the sample window
             gauge:
               dataPoints:
                 - asDouble: 0.003508506
                   startTimeUnixNano: "1000000"
                   timeUnixNano: "2000000"
-            name: container.cpu.utilization
-            unit: "1"
+            name: container.cpu.usage
+            unit: "{cpu}"
           - description: Container filesystem available
             gauge:
               dataPoints:
@@ -2847,7 +2847,7 @@ resourceMetrics:
             name: container.memory.working_set
             unit: By
         scope:
-          name: otelcol/kubeletstatsreceiver
+          name: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kubeletstatsreceiver
           version: latest
   - resource:
       attributes:
@@ -2878,14 +2878,14 @@ resourceMetrics:
                   timeUnixNano: "2000000"
               isMonotonic: true
             unit: s
-          - description: Container CPU utilization
+          - description: Total CPU usage (sum of all cores per second) averaged over the sample window
             gauge:
               dataPoints:
                 - asDouble: 0.018247146
                   startTimeUnixNano: "1000000"
                   timeUnixNano: "2000000"
-            name: container.cpu.utilization
-            unit: "1"
+            name: container.cpu.usage
+            unit: "{cpu}"
           - description: Container filesystem available
             gauge:
               dataPoints:
@@ -2959,7 +2959,7 @@ resourceMetrics:
             name: container.memory.working_set
             unit: By
         scope:
-          name: otelcol/kubeletstatsreceiver
+          name: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kubeletstatsreceiver
           version: latest
   - resource:
       attributes:
@@ -2990,14 +2990,14 @@ resourceMetrics:
                   timeUnixNano: "2000000"
               isMonotonic: true
             unit: s
-          - description: Container CPU utilization
+          - description: Total CPU usage (sum of all cores per second) averaged over the sample window
             gauge:
               dataPoints:
                 - asDouble: 0
                   startTimeUnixNano: "1000000"
                   timeUnixNano: "2000000"
-            name: container.cpu.utilization
-            unit: "1"
+            name: container.cpu.usage
+            unit: "{cpu}"
           - description: Container filesystem available
             gauge:
               dataPoints:
@@ -3071,5 +3071,5 @@ resourceMetrics:
             name: container.memory.working_set
             unit: By
         scope:
-          name: otelcol/kubeletstatsreceiver
+          name: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kubeletstatsreceiver
           version: latest

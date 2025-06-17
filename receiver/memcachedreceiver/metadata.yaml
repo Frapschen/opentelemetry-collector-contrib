@@ -1,5 +1,4 @@
 type: memcached
-scope_name: otelcol/memcachedreceiver
 
 status:
   class: receiver
@@ -7,7 +6,8 @@ status:
     beta: [metrics]
   distributions: [contrib]
   codeowners:
-    active: [djaglowski]
+    active: [jsirianni]
+    emeritus: [djaglowski]
     seeking_new: true
 
 attributes:

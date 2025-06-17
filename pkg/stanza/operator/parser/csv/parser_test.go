@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/component/componenttest"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/entry"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator"
@@ -19,7 +20,8 @@ var testHeader = "name,sev,msg"
 func newTestParser(t *testing.T) *Parser {
 	cfg := NewConfigWithID("test")
 	cfg.Header = testHeader
-	op, err := cfg.Build(testutil.Logger(t))
+	set := componenttest.NewNopTelemetrySettings()
+	op, err := cfg.Build(set)
 	require.NoError(t, err)
 	return op.(*Parser)
 }
@@ -28,7 +30,8 @@ func newTestParserIgnoreQuotes(t *testing.T) *Parser {
 	cfg := NewConfigWithID("test")
 	cfg.Header = testHeader
 	cfg.IgnoreQuotes = true
-	op, err := cfg.Build(testutil.Logger(t))
+	set := componenttest.NewNopTelemetrySettings()
+	op, err := cfg.Build(set)
 	require.NoError(t, err)
 	return op.(*Parser)
 }
@@ -36,9 +39,9 @@ func newTestParserIgnoreQuotes(t *testing.T) *Parser {
 func TestParserBuildFailure(t *testing.T) {
 	cfg := NewConfigWithID("test")
 	cfg.OnError = "invalid_on_error"
-	_, err := cfg.Build(testutil.Logger(t))
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "invalid `on_error` field")
+	set := componenttest.NewNopTelemetrySettings()
+	_, err := cfg.Build(set)
+	require.ErrorContains(t, err, "invalid `on_error` field")
 }
 
 func TestParserBuildFailureLazyIgnoreQuotes(t *testing.T) {
@@ -46,7 +49,8 @@ func TestParserBuildFailureLazyIgnoreQuotes(t *testing.T) {
 	cfg.Header = testHeader
 	cfg.LazyQuotes = true
 	cfg.IgnoreQuotes = true
-	_, err := cfg.Build(testutil.Logger(t))
+	set := componenttest.NewNopTelemetrySettings()
+	_, err := cfg.Build(set)
 	require.Error(t, err)
 	require.ErrorContains(t, err, "only one of 'ignore_quotes' or 'lazy_quotes' can be true")
 }
@@ -55,46 +59,42 @@ func TestParserBuildFailureInvalidDelimiter(t *testing.T) {
 	cfg := NewConfigWithID("test")
 	cfg.Header = testHeader
 	cfg.FieldDelimiter = ";;"
-	_, err := cfg.Build(testutil.Logger(t))
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "invalid 'delimiter': ';;'")
+	set := componenttest.NewNopTelemetrySettings()
+	_, err := cfg.Build(set)
+	require.ErrorContains(t, err, "invalid 'delimiter': ';;'")
 }
 
 func TestParserBuildFailureBadHeaderConfig(t *testing.T) {
 	cfg := NewConfigWithID("test")
 	cfg.Header = "testheader"
 	cfg.HeaderAttribute = "testheader"
-	_, err := cfg.Build(testutil.Logger(t))
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "only one header parameter can be set: 'header' or 'header_attribute'")
+	set := componenttest.NewNopTelemetrySettings()
+	_, err := cfg.Build(set)
+	require.ErrorContains(t, err, "only one header parameter can be set: 'header' or 'header_attribute'")
 }
 
 func TestParserByteFailure(t *testing.T) {
 	parser := newTestParser(t)
 	_, err := parser.parse([]byte("invalid"))
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "wrong number of fields: expected 3, found 1")
+	require.ErrorContains(t, err, "wrong number of fields: expected 3, found 1")
 }
 
 func TestParserStringFailure(t *testing.T) {
 	parser := newTestParser(t)
 	_, err := parser.parse("invalid")
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "wrong number of fields: expected 3, found 1")
+	require.ErrorContains(t, err, "wrong number of fields: expected 3, found 1")
 }
 
 func TestParserInvalidType(t *testing.T) {
 	parser := newTestParser(t)
 	_, err := parser.parse([]int{})
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "type '[]int' cannot be parsed as csv")
+	require.ErrorContains(t, err, "type '[]int' cannot be parsed as csv")
 }
 
 func TestParserInvalidTypeIgnoreQuotes(t *testing.T) {
 	parser := newTestParserIgnoreQuotes(t)
 	_, err := parser.parse([]int{})
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "type '[]int' cannot be parsed as csv")
+	require.ErrorContains(t, err, "type '[]int' cannot be parsed as csv")
 }
 
 func TestParserCSV(t *testing.T) {
@@ -793,7 +793,8 @@ func TestParserCSV(t *testing.T) {
 			cfg.OutputIDs = []string{"fake"}
 			tc.configure(cfg)
 
-			op, err := cfg.Build(testutil.Logger(t))
+			set := componenttest.NewNopTelemetrySettings()
+			op, err := cfg.Build(set)
 			if tc.expectBuildErr {
 				require.Error(t, err)
 				return
@@ -1037,7 +1038,8 @@ cc""",dddd,eeee`,
 			cfg.OutputIDs = []string{"fake"}
 			cfg.Header = "A,B,C,D,E"
 
-			op, err := cfg.Build(testutil.Logger(t))
+			set := componenttest.NewNopTelemetrySettings()
+			op, err := cfg.Build(set)
 			require.NoError(t, err)
 
 			fake := testutil.NewFakeOutput(t)
@@ -1059,7 +1061,8 @@ func TestParserCSVInvalidJSONInput(t *testing.T) {
 		cfg.OutputIDs = []string{"fake"}
 		cfg.Header = testHeader
 
-		op, err := cfg.Build(testutil.Logger(t))
+		set := componenttest.NewNopTelemetrySettings()
+		op, err := cfg.Build(set)
 		require.NoError(t, err)
 
 		fake := testutil.NewFakeOutput(t)
@@ -1084,29 +1087,32 @@ func TestBuildParserCSV(t *testing.T) {
 
 	t.Run("BasicConfig", func(t *testing.T) {
 		c := newBasicParser()
-		_, err := c.Build(testutil.Logger(t))
+		set := componenttest.NewNopTelemetrySettings()
+		_, err := c.Build(set)
 		require.NoError(t, err)
 	})
 
 	t.Run("MissingHeaderField", func(t *testing.T) {
 		c := newBasicParser()
 		c.Header = ""
-		_, err := c.Build(testutil.Logger(t))
+		set := componenttest.NewNopTelemetrySettings()
+		_, err := c.Build(set)
 		require.Error(t, err)
 	})
 
 	t.Run("InvalidHeaderFieldMissingDelimiter", func(t *testing.T) {
 		c := newBasicParser()
 		c.Header = "name"
-		_, err := c.Build(testutil.Logger(t))
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "missing field delimiter in header")
+		set := componenttest.NewNopTelemetrySettings()
+		_, err := c.Build(set)
+		require.ErrorContains(t, err, "missing field delimiter in header")
 	})
 
 	t.Run("InvalidHeaderFieldWrongDelimiter", func(t *testing.T) {
 		c := newBasicParser()
 		c.Header = "name;position;number"
-		_, err := c.Build(testutil.Logger(t))
+		set := componenttest.NewNopTelemetrySettings()
+		_, err := c.Build(set)
 		require.Error(t, err)
 	})
 
@@ -1114,8 +1120,8 @@ func TestBuildParserCSV(t *testing.T) {
 		c := newBasicParser()
 		c.Header = "name,position,number"
 		c.FieldDelimiter = ":"
-		_, err := c.Build(testutil.Logger(t))
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "missing field delimiter in header")
+		set := componenttest.NewNopTelemetrySettings()
+		_, err := c.Build(set)
+		require.ErrorContains(t, err, "missing field delimiter in header")
 	})
 }

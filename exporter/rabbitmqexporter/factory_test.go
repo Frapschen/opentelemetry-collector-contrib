@@ -9,7 +9,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"go.opentelemetry.io/collector/component/componenttest"
+	"go.opentelemetry.io/collector/config/configtls"
 	"go.opentelemetry.io/collector/exporter/exportertest"
+
+	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/rabbitmqexporter/internal/metadata"
 )
 
 func TestCreateDefaultConfig(t *testing.T) {
@@ -19,29 +22,79 @@ func TestCreateDefaultConfig(t *testing.T) {
 	assert.NoError(t, componenttest.CheckConfigStruct(cfg))
 }
 
-func TestCreateTracesExporter(t *testing.T) {
+func TestCreateTraces(t *testing.T) {
 	factory := NewFactory()
 	cfg := factory.CreateDefaultConfig()
 
-	te, err := factory.CreateTracesExporter(context.Background(), exportertest.NewNopCreateSettings(), cfg)
+	te, err := factory.CreateTraces(context.Background(), exportertest.NewNopSettings(metadata.Type), cfg)
 	assert.NoError(t, err)
 	assert.NotNil(t, te)
 }
 
-func TestCreateMetricsExporter(t *testing.T) {
+func TestCreateMetrics(t *testing.T) {
 	factory := NewFactory()
 	cfg := factory.CreateDefaultConfig()
 
-	te, err := factory.CreateMetricsExporter(context.Background(), exportertest.NewNopCreateSettings(), cfg)
+	te, err := factory.CreateMetrics(context.Background(), exportertest.NewNopSettings(metadata.Type), cfg)
 	assert.NoError(t, err)
 	assert.NotNil(t, te)
 }
 
-func TestCreateLogsExporter(t *testing.T) {
+func TestCreateLogs(t *testing.T) {
 	factory := NewFactory()
 	cfg := factory.CreateDefaultConfig()
 
-	te, err := factory.CreateLogsExporter(context.Background(), exportertest.NewNopCreateSettings(), cfg)
+	te, err := factory.CreateLogs(context.Background(), exportertest.NewNopSettings(metadata.Type), cfg)
+	assert.NoError(t, err)
+	assert.NotNil(t, te)
+}
+
+func TestCreateMetricsWithConnectionName(t *testing.T) {
+	factory := NewFactory()
+	cfg := factory.CreateDefaultConfig().(*Config)
+	cfg.Connection.Name = "my-conn-name"
+
+	te, err := factory.CreateMetrics(context.Background(), exportertest.NewNopSettings(metadata.Type), cfg)
+	assert.NoError(t, err)
+	assert.NotNil(t, te)
+}
+
+func TestCreateExporterWithCustomRoutingKey(t *testing.T) {
+	factory := NewFactory()
+	cfg := factory.CreateDefaultConfig().(*Config)
+	cfg.Routing.RoutingKey = "custom_routing_key"
+
+	te, err := factory.CreateLogs(context.Background(), exportertest.NewNopSettings(metadata.Type), cfg)
+	assert.NoError(t, err)
+	assert.NotNil(t, te)
+}
+
+func TestCreateExporterWithConnectionName(t *testing.T) {
+	factory := NewFactory()
+	cfg := factory.CreateDefaultConfig().(*Config)
+	cfg.Connection.Name = "my-conn-name"
+
+	te, err := factory.CreateLogs(context.Background(), exportertest.NewNopSettings(metadata.Type), cfg)
+	assert.NoError(t, err)
+	assert.NotNil(t, te)
+}
+
+func TestCreateExporterWithTLSs(t *testing.T) {
+	factory := NewFactory()
+	cfg := factory.CreateDefaultConfig().(*Config)
+	cfg.Connection.TLSConfig = &configtls.ClientConfig{}
+
+	te, err := factory.CreateLogs(context.Background(), exportertest.NewNopSettings(metadata.Type), cfg)
+	assert.NoError(t, err)
+	assert.NotNil(t, te)
+}
+
+func TestCreateTracesWithConnectionName(t *testing.T) {
+	factory := NewFactory()
+	cfg := factory.CreateDefaultConfig().(*Config)
+	cfg.Connection.Name = "my-conn-name"
+
+	te, err := factory.CreateTraces(context.Background(), exportertest.NewNopSettings(metadata.Type), cfg)
 	assert.NoError(t, err)
 	assert.NotNil(t, te)
 }

@@ -1,5 +1,4 @@
 type: iis
-scope_name: otelcol/iisreceiver
 
 status:
   class: receiver
@@ -7,7 +6,7 @@ status:
     beta: [metrics]
   distributions: [contrib]
   codeowners:
-    active: [Mrod1598, djaglowski]
+    active: [Mrod1598, pjanotti]
     seeking_new: true
   unsupported_platforms: [linux, darwin]
 
@@ -136,3 +135,15 @@ metrics:
     gauge:
       value_type: int
     enabled: true
+  iis.application_pool.state:
+    description: The current state of the application pool. (0 - Starting, 1 - Started, 2 - Stopping, 3 - Stopped, 4 - Unknown)
+    unit: "{state}"
+    gauge:
+      value_type: int
+    enabled: false
+  iis.application_pool.uptime:
+    description: The application pools uptime period since the last restart.
+    unit: "{ms}"
+    gauge:
+      value_type: int
+    enabled: false

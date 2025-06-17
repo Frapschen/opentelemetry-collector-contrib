@@ -13,7 +13,7 @@ import (
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/confmap/confmaptest"
-	"go.opentelemetry.io/collector/receiver/scraperhelper"
+	"go.opentelemetry.io/collector/scraper/scraperhelper"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/nsxtreceiver/internal/metadata"
 )
@@ -41,7 +41,7 @@ func TestMetricValidation(t *testing.T) {
 			expectedError: errors.New("url scheme must be http or https"),
 		},
 		{
-			desc: "unparseable url",
+			desc: "unparsable url",
 			cfg: &Config{
 				ClientConfig: confighttp.ClientConfig{
 					Endpoint: "\x00",
@@ -94,13 +94,13 @@ func TestLoadConfig(t *testing.T) {
 
 	sub, err := cm.Sub(component.NewIDWithName(metadata.Type, "").String())
 	require.NoError(t, err)
-	require.NoError(t, component.UnmarshalConfig(sub, cfg))
+	require.NoError(t, sub.Unmarshal(cfg))
 
 	expected := factory.CreateDefaultConfig().(*Config)
 	expected.Endpoint = "https://nsx-manager-endpoint"
 	expected.Username = "admin"
 	expected.Password = "${env:NSXT_PASSWORD}"
-	expected.TLSSetting.Insecure = true
+	expected.TLS.Insecure = true
 	expected.CollectionInterval = time.Minute
 
 	require.Equal(t, expected, cfg)

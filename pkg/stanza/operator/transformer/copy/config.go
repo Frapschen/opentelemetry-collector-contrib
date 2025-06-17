@@ -4,9 +4,9 @@
 package copy // import "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator/transformer/copy"
 
 import (
-	"fmt"
+	"errors"
 
-	"go.uber.org/zap"
+	"go.opentelemetry.io/collector/component"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/entry"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator"
@@ -39,18 +39,18 @@ type Config struct {
 }
 
 // Build will build a copy operator from the supplied configuration
-func (c Config) Build(logger *zap.SugaredLogger) (operator.Operator, error) {
-	transformerOperator, err := c.TransformerConfig.Build(logger)
+func (c Config) Build(set component.TelemetrySettings) (operator.Operator, error) {
+	transformerOperator, err := c.TransformerConfig.Build(set)
 	if err != nil {
 		return nil, err
 	}
 
 	if c.From == entry.NewNilField() {
-		return nil, fmt.Errorf("copy: missing from field")
+		return nil, errors.New("copy: missing from field")
 	}
 
 	if c.To == entry.NewNilField() {
-		return nil, fmt.Errorf("copy: missing to field")
+		return nil, errors.New("copy: missing to field")
 	}
 
 	return &Transformer{

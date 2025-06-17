@@ -11,6 +11,7 @@ import (
 
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/component/componenttest"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/entry"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator"
@@ -179,7 +180,8 @@ func TestTransformer(t *testing.T) {
 			cfg := NewConfigWithID("test")
 			cfg.Expression = tc.expression
 
-			op, err := cfg.Build(testutil.Logger(t))
+			set := componenttest.NewNopTelemetrySettings()
+			op, err := cfg.Build(set)
 			require.NoError(t, err)
 
 			filtered := true
@@ -188,11 +190,8 @@ func TestTransformer(t *testing.T) {
 				filtered = false
 			})
 
-			filterOperator, ok := op.(*Transformer)
-			require.True(t, ok)
-
-			filterOperator.OutputOperators = []operator.Operator{mockOutput}
-			err = filterOperator.Process(context.Background(), tc.input)
+			op.(*Transformer).OutputOperators = []operator.Operator{mockOutput}
+			err = op.ProcessBatch(context.Background(), []*entry.Entry{tc.input})
 			require.NoError(t, err)
 
 			require.Equal(t, tc.filtered, filtered)
@@ -204,7 +203,8 @@ func TestFilterDropRatio(t *testing.T) {
 	cfg := NewConfigWithID("test")
 	cfg.Expression = `body.message == "test_message"`
 	cfg.DropRatio = 0.5
-	op, err := cfg.Build(testutil.Logger(t))
+	set := componenttest.NewNopTelemetrySettings()
+	op, err := cfg.Build(set)
 	require.NoError(t, err)
 
 	processedEntries := 0
@@ -233,12 +233,12 @@ func TestFilterDropRatio(t *testing.T) {
 	}
 
 	for i := 1; i < 11; i++ {
-		err = filterOperator.Process(context.Background(), testEntry)
+		err = filterOperator.ProcessBatch(context.Background(), []*entry.Entry{testEntry})
 		require.NoError(t, err)
 	}
 
 	for i := 1; i < 11; i++ {
-		err = filterOperator.Process(context.Background(), testEntry)
+		err = filterOperator.ProcessBatch(context.Background(), []*entry.Entry{testEntry})
 		require.NoError(t, err)
 	}
 

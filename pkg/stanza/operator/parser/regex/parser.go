@@ -26,9 +26,13 @@ func (p *Parser) Stop() error {
 	return nil
 }
 
+func (p *Parser) ProcessBatch(ctx context.Context, entries []*entry.Entry) error {
+	return p.ProcessBatchWith(ctx, entries, p.Process)
+}
+
 // Process will parse an entry for regex.
 func (p *Parser) Process(ctx context.Context, entry *entry.Entry) error {
-	return p.ParserOperator.ProcessWith(ctx, entry, p.parse)
+	return p.ProcessWith(ctx, entry, p.parse)
 }
 
 // parse will parse a value using the supplied regex.
@@ -50,20 +54,9 @@ func (p *Parser) match(value string) (any, error) {
 		}
 	}
 
-	matches := p.regexp.FindStringSubmatch(value)
-	if matches == nil {
-		return nil, fmt.Errorf("regex pattern does not match")
-	}
-
-	parsedValues := map[string]any{}
-	for i, subexp := range p.regexp.SubexpNames() {
-		if i == 0 {
-			// Skip whole match
-			continue
-		}
-		if subexp != "" {
-			parsedValues[subexp] = matches[i]
-		}
+	parsedValues, err := helper.MatchValues(value, p.regexp)
+	if err != nil {
+		return nil, err
 	}
 
 	if p.cache != nil {

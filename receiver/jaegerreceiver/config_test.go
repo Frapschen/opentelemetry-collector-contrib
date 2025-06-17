@@ -15,6 +15,7 @@ import (
 	"go.opentelemetry.io/collector/config/confignet"
 	"go.opentelemetry.io/collector/config/configtls"
 	"go.opentelemetry.io/collector/confmap/confmaptest"
+	"go.opentelemetry.io/collector/confmap/xconfmap"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/jaegerreceiver/internal/metadata"
 )
@@ -42,7 +43,7 @@ func TestLoadConfig(t *testing.T) {
 					ThriftHTTP: &confighttp.ServerConfig{
 						Endpoint: ":3456",
 					},
-					ThriftCompact: &ProtocolUDP{
+					ThriftCompactUDP: &ProtocolUDP{
 						Endpoint: "0.0.0.0:456",
 						ServerConfigUDP: ServerConfigUDP{
 							QueueSize:        100_000,
@@ -51,7 +52,7 @@ func TestLoadConfig(t *testing.T) {
 							SocketBufferSize: 65_536,
 						},
 					},
-					ThriftBinary: &ProtocolUDP{
+					ThriftBinaryUDP: &ProtocolUDP{
 						Endpoint: "0.0.0.0:789",
 						ServerConfigUDP: ServerConfigUDP{
 							QueueSize:        1_000,
@@ -69,19 +70,19 @@ func TestLoadConfig(t *testing.T) {
 				Protocols: Protocols{
 					GRPC: &configgrpc.ServerConfig{
 						NetAddr: confignet.AddrConfig{
-							Endpoint:  "0.0.0.0:14250",
+							Endpoint:  "localhost:14250",
 							Transport: confignet.TransportTypeTCP,
 						},
 					},
 					ThriftHTTP: &confighttp.ServerConfig{
-						Endpoint: "0.0.0.0:14268",
+						Endpoint: "localhost:14268",
 					},
-					ThriftCompact: &ProtocolUDP{
-						Endpoint:        "0.0.0.0:6831",
+					ThriftCompactUDP: &ProtocolUDP{
+						Endpoint:        "localhost:6831",
 						ServerConfigUDP: defaultServerConfigUDP(),
 					},
-					ThriftBinary: &ProtocolUDP{
-						Endpoint:        "0.0.0.0:6832",
+					ThriftBinaryUDP: &ProtocolUDP{
+						Endpoint:        "localhost:6832",
 						ServerConfigUDP: defaultServerConfigUDP(),
 					},
 				},
@@ -97,8 +98,8 @@ func TestLoadConfig(t *testing.T) {
 							Transport: confignet.TransportTypeTCP,
 						},
 					},
-					ThriftCompact: &ProtocolUDP{
-						Endpoint:        "0.0.0.0:6831",
+					ThriftCompactUDP: &ProtocolUDP{
+						Endpoint:        "localhost:6831",
 						ServerConfigUDP: defaultServerConfigUDP(),
 					},
 				},
@@ -113,7 +114,7 @@ func TestLoadConfig(t *testing.T) {
 							Endpoint:  "localhost:9876",
 							Transport: confignet.TransportTypeTCP,
 						},
-						TLSSetting: &configtls.ServerConfig{
+						TLS: &configtls.ServerConfig{
 							Config: configtls.Config{
 								CertFile: "/test.crt",
 								KeyFile:  "/test.key",
@@ -135,9 +136,9 @@ func TestLoadConfig(t *testing.T) {
 
 			sub, err := cm.Sub(tt.id.String())
 			require.NoError(t, err)
-			require.NoError(t, component.UnmarshalConfig(sub, cfg))
+			require.NoError(t, sub.Unmarshal(cfg))
 
-			assert.NoError(t, component.ValidateConfig(cfg))
+			assert.NoError(t, xconfmap.Validate(cfg))
 			assert.Equal(t, tt.expected, cfg)
 		})
 	}
@@ -151,17 +152,17 @@ func TestFailedLoadConfig(t *testing.T) {
 
 	sub, err := cm.Sub(component.NewIDWithName(metadata.Type, "typo_default_proto_config").String())
 	require.NoError(t, err)
-	err = component.UnmarshalConfig(sub, cfg)
-	assert.EqualError(t, err, "1 error(s) decoding:\n\n* 'protocols' has invalid keys: thrift_htttp")
+	err = sub.Unmarshal(cfg)
+	assert.ErrorContains(t, err, "'protocols' has invalid keys: thrift_htttp")
 
 	sub, err = cm.Sub(component.NewIDWithName(metadata.Type, "bad_proto_config").String())
 	require.NoError(t, err)
-	err = component.UnmarshalConfig(sub, cfg)
-	assert.EqualError(t, err, "1 error(s) decoding:\n\n* 'protocols' has invalid keys: thrift_htttp")
+	err = sub.Unmarshal(cfg)
+	assert.ErrorContains(t, err, "'protocols' has invalid keys: thrift_htttp")
 
 	sub, err = cm.Sub(component.NewIDWithName(metadata.Type, "empty").String())
 	require.NoError(t, err)
-	err = component.UnmarshalConfig(sub, cfg)
+	err = sub.Unmarshal(cfg)
 	assert.EqualError(t, err, "empty config for Jaeger receiver")
 }
 
@@ -183,7 +184,7 @@ func TestInvalidConfig(t *testing.T) {
 		{
 			desc: "thrift-udp-compact-no-port",
 			apply: func(cfg *Config) {
-				cfg.ThriftCompact = &ProtocolUDP{
+				cfg.ThriftCompactUDP = &ProtocolUDP{
 					Endpoint: "localhost:",
 				}
 			},
@@ -192,7 +193,7 @@ func TestInvalidConfig(t *testing.T) {
 		{
 			desc: "thrift-udp-binary-no-port",
 			apply: func(cfg *Config) {
-				cfg.ThriftBinary = &ProtocolUDP{
+				cfg.ThriftBinaryUDP = &ProtocolUDP{
 					Endpoint: "localhost:",
 				}
 			},
@@ -220,7 +221,7 @@ func TestInvalidConfig(t *testing.T) {
 		{
 			desc: "port-outside-of-range",
 			apply: func(cfg *Config) {
-				cfg.ThriftBinary = &ProtocolUDP{
+				cfg.ThriftBinaryUDP = &ProtocolUDP{
 					Endpoint: "localhost:65536",
 				}
 			},
@@ -234,9 +235,8 @@ func TestInvalidConfig(t *testing.T) {
 
 			tC.apply(cfg)
 
-			err := component.ValidateConfig(cfg)
+			err := xconfmap.Validate(cfg)
 			assert.Error(t, err, tC.err)
-
 		})
 	}
 }

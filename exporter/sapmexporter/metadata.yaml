@@ -1,10 +1,13 @@
 type: sapm
-scope_name: otelcol/sapm
 
 status:
   class: exporter
   stability:
-    beta: [traces]
+    deprecated: [traces]
+  deprecation:
+    traces:
+      migration: "use OTLP exporter"
+      date: "2024-12-19"
   distributions: [contrib]
   codeowners:
     active: [dmitryax, atoulme]

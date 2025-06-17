@@ -27,6 +27,7 @@ Parsers:
 - [trace_parser](./trace_parser.md)
 - [uri_parser](./uri_parser.md)
 - [key_value_parser](./key_value_parser.md)
+- [container](./container.md)
 
 Outputs:
 - [file_output](./file_output.md)
@@ -40,6 +41,7 @@ General purpose:
 - [move](./move.md)
 - [noop](./noop.md)
 - [recombine](./recombine.md)
+- [regex_replace](./regex_replace.md)
 - [remove](./remove.md)
 - [retain](./retain.md)
 - [router](./router.md)

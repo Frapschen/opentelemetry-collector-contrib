@@ -5,10 +5,11 @@ package filter // import "github.com/open-telemetry/opentelemetry-collector-cont
 
 import (
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"math/big"
 
-	"go.uber.org/zap"
+	"go.opentelemetry.io/collector/component"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator/helper"
@@ -46,8 +47,8 @@ type Config struct {
 }
 
 // Build will build a filter operator from the supplied configuration
-func (c Config) Build(logger *zap.SugaredLogger) (operator.Operator, error) {
-	transformer, err := c.TransformerConfig.Build(logger)
+func (c Config) Build(set component.TelemetrySettings) (operator.Operator, error) {
+	transformer, err := c.TransformerConfig.Build(set)
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +59,7 @@ func (c Config) Build(logger *zap.SugaredLogger) (operator.Operator, error) {
 	}
 
 	if c.DropRatio < 0.0 || c.DropRatio > 1.0 {
-		return nil, fmt.Errorf("drop_ratio must be a number between 0 and 1")
+		return nil, errors.New("drop_ratio must be a number between 0 and 1")
 	}
 
 	return &Transformer{

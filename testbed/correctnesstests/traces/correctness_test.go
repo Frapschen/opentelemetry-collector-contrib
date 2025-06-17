@@ -25,11 +25,14 @@ func TestMain(m *testing.M) {
 func TestTracingGoldenData(t *testing.T) {
 	tests, err := correctnesstests.LoadPictOutputPipelineDefs("testdata/generated_pict_pairs_traces_pipeline.txt")
 	require.NoError(t, err)
-	processors := map[string]string{
-		"batch": `
+	processors := []correctnesstests.ProcessorNameAndConfigBody{
+		{
+			Name: "batch",
+			Body: `
   batch:
     send_batch_size: 1024
 `,
+		},
 	}
 	for _, test := range tests {
 		test.TestName = fmt.Sprintf("%s-%s", test.Receiver, test.Exporter)
@@ -46,7 +49,7 @@ func testWithTracingGoldenDataset(
 	sender testbed.DataSender,
 	receiver testbed.DataReceiver,
 	resourceSpec testbed.ResourceSpec,
-	processors map[string]string,
+	processors []correctnesstests.ProcessorNameAndConfigBody,
 ) {
 	dataProvider := testbed.NewGoldenDataProvider(
 		"../../../internal/coreinternal/goldendataset/testdata/generated_pict_pairs_traces.txt",
@@ -56,9 +59,9 @@ func testWithTracingGoldenDataset(
 	require.NoError(t, err, "default components resulted in: %v", err)
 	runner := testbed.NewInProcessCollector(factories)
 	validator := testbed.NewCorrectTestValidator(sender.ProtocolName(), receiver.ProtocolName(), dataProvider)
-	config := correctnesstests.CreateConfigYaml(t, sender, receiver, processors, "traces")
+	config := correctnesstests.CreateConfigYaml(t, sender, receiver, nil, processors)
 	log.Println(config)
-	configCleanup, cfgErr := runner.PrepareConfig(config)
+	configCleanup, cfgErr := runner.PrepareConfig(t, config)
 	require.NoError(t, cfgErr, "collector configuration resulted in: %v", cfgErr)
 	defer configCleanup()
 	tc := testbed.NewTestCase(
@@ -124,7 +127,7 @@ func TestSporadicGoldenDataset(t *testing.T) {
     sending_queue:
       enabled: false
 `)
-		_, err = runner.PrepareConfig(correctnesstests.CreateConfigYaml(t, sender, receiver, nil, "traces"))
+		_, err = runner.PrepareConfig(t, correctnesstests.CreateConfigYaml(t, sender, receiver, nil, nil))
 		require.NoError(t, err, "collector configuration resulted in: %v", err)
 		validator := testbed.NewCorrectTestValidator(sender.ProtocolName(), receiver.ProtocolName(), dataProvider)
 		tc := testbed.NewTestCase(

@@ -5,6 +5,7 @@ package testbed // import "github.com/open-telemetry/opentelemetry-collector-con
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -46,6 +47,9 @@ type LoadOptions struct {
 
 	// Parallel specifies how many goroutines to send from.
 	Parallel int
+
+	// MaxDelay defines the longest amount of time we can continue retrying for non-permanent errors.
+	MaxDelay time.Duration
 }
 
 var _ LoadGenerator = (*ProviderSender)(nil)
@@ -70,15 +74,14 @@ type ProviderSender struct {
 
 	options LoadOptions
 
-	// Record information about previous errors to avoid flood of error messages.
-	prevErr  error
-	sendType string
+	sendType     string
+	generateFunc func() error
 }
 
 // NewLoadGenerator creates a ProviderSender to send DataProvider-generated telemetry via a DataSender.
 func NewLoadGenerator(dataProvider DataProvider, sender DataSender) (LoadGenerator, error) {
 	if sender == nil {
-		return nil, fmt.Errorf("cannot create load generator without DataSender")
+		return nil, errors.New("cannot create load generator without DataSender")
 	}
 
 	ps := &ProviderSender{
@@ -90,12 +93,15 @@ func NewLoadGenerator(dataProvider DataProvider, sender DataSender) (LoadGenerat
 	switch t := ps.Sender.(type) {
 	case TraceDataSender:
 		ps.sendType = "traces"
+		ps.generateFunc = ps.generateTrace
 	case MetricDataSender:
 		ps.sendType = "metrics"
+		ps.generateFunc = ps.generateMetrics
 	case LogDataSender:
 		ps.sendType = "logs"
+		ps.generateFunc = ps.generateLog
 	default:
-		ps.sendType = fmt.Sprintf("invalid-%T", t)
+		return nil, fmt.Errorf("failed creating load generator, unhandled data type %T", t)
 	}
 
 	return ps, nil
@@ -108,6 +114,11 @@ func (ps *ProviderSender) Start(options LoadOptions) {
 	if ps.options.ItemsPerBatch == 0 {
 		// 10 items per batch by default.
 		ps.options.ItemsPerBatch = 10
+	}
+
+	if ps.options.MaxDelay == 0 {
+		// retry for an additional 10 seconds by default
+		ps.options.MaxDelay = time.Second * 10
 	}
 
 	log.Printf("Starting load generator at %d items/sec.", ps.options.DataItemsPerSecond)
@@ -203,26 +214,26 @@ func (ps *ProviderSender) generate() {
 
 	var workers sync.WaitGroup
 
+	tickDuration := ps.perWorkerTickDuration(numWorkers)
+
 	for i := 0; i < numWorkers; i++ {
 		workers.Add(1)
 
 		go func() {
 			defer workers.Done()
-			t := time.NewTicker(time.Second / time.Duration(ps.options.DataItemsPerSecond/ps.options.ItemsPerBatch/numWorkers))
+			t := time.NewTicker(tickDuration)
 			defer t.Stop()
+
+			var prevErr error
 			for {
 				select {
 				case <-t.C:
-					switch ps.Sender.(type) {
-					case TraceDataSender:
-						ps.generateTrace()
-					case MetricDataSender:
-						ps.generateMetrics()
-					case LogDataSender:
-						ps.generateLog()
-					default:
-						log.Printf("Invalid type of ProviderSender sender")
+					err := ps.generateFunc()
+					// log the error if it is different from the previous result
+					if err != nil && (prevErr == nil || err.Error() != prevErr.Error()) {
+						log.Printf("%v", err)
 					}
+					prevErr = err
 				case <-ps.stopSignal:
 					return
 				}
@@ -236,94 +247,109 @@ func (ps *ProviderSender) generate() {
 	ps.Sender.Flush()
 }
 
-func (ps *ProviderSender) generateTrace() {
+func (ps *ProviderSender) generateTrace() error {
 	traceSender := ps.Sender.(TraceDataSender)
 
 	traceData, done := ps.Provider.GenerateTraces()
+	timer := time.NewTimer(ps.options.MaxDelay)
 	if done {
-		return
+		return nil
 	}
 
 	for {
+		// Generated data MUST be consumed once since the data counters
+		// are updated by the provider and not consuming the generated
+		// data will lead to accounting errors.
 		err := traceSender.ConsumeTraces(context.Background(), traceData)
 		if err == nil {
-			ps.prevErr = nil
-			break
+			return nil
 		}
 
-		if !consumererror.IsPermanent(err) {
-			ps.nonPermanentErrors.Add(uint64(traceData.SpanCount()))
-			continue
+		if consumererror.IsPermanent(err) {
+			ps.permanentErrors.Add(uint64(traceData.SpanCount()))
+			return fmt.Errorf("cannot send traces: %w", err)
 		}
-
-		ps.permanentErrors.Add(uint64(traceData.SpanCount()))
-
-		// update prevErr to err if it's different than last observed error
-		if ps.prevErr == nil || ps.prevErr.Error() != err.Error() {
-			ps.prevErr = err
-			log.Printf("Cannot send traces: %v", err)
+		ps.nonPermanentErrors.Add(uint64(traceData.SpanCount()))
+		select {
+		case <-timer.C:
+			return nil
+		default:
 		}
-		break
 	}
 }
 
-func (ps *ProviderSender) generateMetrics() {
+func (ps *ProviderSender) generateMetrics() error {
 	metricSender := ps.Sender.(MetricDataSender)
 
 	metricData, done := ps.Provider.GenerateMetrics()
+	timer := time.NewTimer(ps.options.MaxDelay)
 	if done {
-		return
+		return nil
 	}
 
 	for {
+		// Generated data MUST be consumed once since the data counters
+		// are updated by the provider and not consuming the generated
+		// data will lead to accounting errors.
 		err := metricSender.ConsumeMetrics(context.Background(), metricData)
 		if err == nil {
-			ps.prevErr = nil
-			break
+			return nil
 		}
 
-		if !consumererror.IsPermanent(err) {
-			ps.nonPermanentErrors.Add(uint64(metricData.DataPointCount()))
-			continue
+		if consumererror.IsPermanent(err) {
+			ps.permanentErrors.Add(uint64(metricData.DataPointCount()))
+			return fmt.Errorf("cannot send metrics: %w", err)
 		}
+		ps.nonPermanentErrors.Add(uint64(metricData.DataPointCount()))
 
-		ps.permanentErrors.Add(uint64(metricData.DataPointCount()))
-
-		// update prevErr to err if it's different than last observed error
-		if ps.prevErr == nil || ps.prevErr.Error() != err.Error() {
-			ps.prevErr = err
-			log.Printf("Cannot send metrics: %v", err)
+		select {
+		case <-timer.C:
+			return nil
+		default:
 		}
-		break
 	}
 }
 
-func (ps *ProviderSender) generateLog() {
+func (ps *ProviderSender) generateLog() error {
 	logSender := ps.Sender.(LogDataSender)
 
 	logData, done := ps.Provider.GenerateLogs()
+	timer := time.NewTimer(ps.options.MaxDelay)
 	if done {
-		return
+		return nil
 	}
+
 	for {
+		// Generated data MUST be consumed once since the data counters
+		// are updated by the provider and not consuming the generated
+		// data will lead to accounting errors.
 		err := logSender.ConsumeLogs(context.Background(), logData)
 		if err == nil {
-			ps.prevErr = nil
-			break
+			return nil
 		}
 
-		if !consumererror.IsPermanent(err) {
-			ps.nonPermanentErrors.Add(uint64(logData.LogRecordCount()))
-			continue
+		if consumererror.IsPermanent(err) {
+			ps.permanentErrors.Add(uint64(logData.LogRecordCount()))
+			return fmt.Errorf("cannot send logs: %w", err)
 		}
+		ps.nonPermanentErrors.Add(uint64(logData.LogRecordCount()))
 
-		ps.permanentErrors.Add(uint64(logData.LogRecordCount()))
-
-		// update prevErr to err if it's different than last observed error
-		if ps.prevErr == nil || ps.prevErr.Error() != err.Error() {
-			ps.prevErr = err
-			log.Printf("Cannot send logs: %v", err)
+		select {
+		case <-timer.C:
+			return nil
+		default:
 		}
-		break
 	}
+}
+
+// perWorkerTickDuration calculates the tick interval each worker must observe in order to
+// produce the desired average DataItemsPerSecond given the constraints of ItemsPerBatch and numWorkers.
+//
+// Of particular note are cases when the batchesPerSecond required of each worker is less than one due to a high
+// number of workers relative to the desired DataItemsPerSecond. If the total batchesPerSecond is less than the
+// number of workers then we are dealing with fractional batches per second per worker, so we need float arithmetic.
+func (ps *ProviderSender) perWorkerTickDuration(numWorkers int) time.Duration {
+	batchesPerSecond := float64(ps.options.DataItemsPerSecond) / float64(ps.options.ItemsPerBatch)
+	batchesPerSecondPerWorker := batchesPerSecond / float64(numWorkers)
+	return time.Duration(float64(time.Second) / batchesPerSecondPerWorker)
 }

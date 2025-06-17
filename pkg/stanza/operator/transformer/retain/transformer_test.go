@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/component/componenttest"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/entry"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator"
@@ -50,6 +51,46 @@ func TestBuildAndProcess(t *testing.T) {
 			newTestEntry,
 			func() *entry.Entry {
 				e := newTestEntry()
+				e.Body = map[string]any{
+					"key": "val",
+				}
+				return e
+			},
+		},
+		{
+			"retain_unrelated_fields",
+			false,
+			func() *Config {
+				cfg := NewConfig()
+				cfg.Fields = append(cfg.Fields, entry.NewBodyField("key"))
+				return cfg
+			}(),
+			func() *entry.Entry {
+				e := newTestEntry()
+
+				e.Severity = entry.Debug3
+				e.SeverityText = "debug"
+				e.Timestamp = time.Unix(1000, 1000)
+				e.ObservedTimestamp = time.Unix(2000, 2000)
+				e.TraceID = []byte{0x01}
+				e.SpanID = []byte{0x01}
+				e.TraceFlags = []byte{0x01}
+				e.ScopeName = "scope"
+
+				return e
+			},
+			func() *entry.Entry {
+				e := newTestEntry()
+
+				e.Severity = entry.Debug3
+				e.SeverityText = "debug"
+				e.Timestamp = time.Unix(1000, 1000)
+				e.ObservedTimestamp = time.Unix(2000, 2000)
+				e.TraceID = []byte{0x01}
+				e.SpanID = []byte{0x01}
+				e.TraceFlags = []byte{0x01}
+				e.ScopeName = "scope"
+
 				e.Body = map[string]any{
 					"key": "val",
 				}
@@ -384,14 +425,14 @@ func TestBuildAndProcess(t *testing.T) {
 			cfg := tc.op
 			cfg.OutputIDs = []string{"fake"}
 			cfg.OnError = "drop"
-			op, err := cfg.Build(testutil.Logger(t))
+			set := componenttest.NewNopTelemetrySettings()
+			op, err := cfg.Build(set)
 			require.NoError(t, err)
 
-			retain := op.(*Transformer)
 			fake := testutil.NewFakeOutput(t)
-			require.NoError(t, retain.SetOutputs([]operator.Operator{fake}))
+			require.NoError(t, op.SetOutputs([]operator.Operator{fake}))
 			val := tc.input()
-			err = retain.Process(context.Background(), val)
+			err = op.ProcessBatch(context.Background(), []*entry.Entry{val})
 			if tc.expectErr {
 				require.Error(t, err)
 			} else {

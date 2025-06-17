@@ -1,5 +1,4 @@
 type: awsemf
-scope_name: otelcol/awsemf
 
 status:
   class: exporter
@@ -7,7 +6,8 @@ status:
     beta: [metrics]
   distributions: [contrib]
   codeowners:
-    active: [Aneurysm9, shaochengwang, mxiamxia, bryan-aguilar]
+    active: [Aneurysm9, mxiamxia]
+    emeritus: [shaochengwang, bryan-aguilar]
 
 tests:
   config:
@@ -15,3 +15,5 @@ tests:
     resource_to_telemetry_conversion:
       enabled: true
   expect_consumer_error: true
+  goleak:
+    skip: true

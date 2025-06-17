@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"go.uber.org/zap"
+	"go.opentelemetry.io/collector/component"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/entry"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator"
@@ -55,19 +55,20 @@ type BaseConfig struct {
 	EnableOctetCounting          bool    `mapstructure:"enable_octet_counting,omitempty"`
 	AllowSkipPriHeader           bool    `mapstructure:"allow_skip_pri_header,omitempty"`
 	NonTransparentFramingTrailer *string `mapstructure:"non_transparent_framing_trailer,omitempty"`
+	MaxOctets                    int     `mapstructure:"max_octets,omitempty"`
 }
 
 // Build will build a JSON parser operator.
-func (c Config) Build(logger *zap.SugaredLogger) (operator.Operator, error) {
-	if c.ParserConfig.TimeParser == nil {
+func (c Config) Build(set component.TelemetrySettings) (operator.Operator, error) {
+	if c.TimeParser == nil {
 		parseFromField := entry.NewAttributeField("timestamp")
-		c.ParserConfig.TimeParser = &helper.TimeParser{
+		c.TimeParser = &helper.TimeParser{
 			ParseFrom:  &parseFromField,
 			LayoutType: helper.NativeKey,
 		}
 	}
 
-	parserOperator, err := c.ParserConfig.Build(logger)
+	parserOperator, err := c.ParserConfig.Build(set)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +77,7 @@ func (c Config) Build(logger *zap.SugaredLogger) (operator.Operator, error) {
 
 	switch {
 	case proto == "":
-		return nil, fmt.Errorf("missing field 'protocol'")
+		return nil, errors.New("missing field 'protocol'")
 	case proto != RFC5424 && (c.NonTransparentFramingTrailer != nil || c.EnableOctetCounting):
 		return nil, errors.New("octet_counting and non_transparent_framing are only compatible with protocol rfc5424")
 	case proto == RFC5424 && (c.NonTransparentFramingTrailer != nil && c.EnableOctetCounting):
@@ -105,5 +106,6 @@ func (c Config) Build(logger *zap.SugaredLogger) (operator.Operator, error) {
 		enableOctetCounting:          c.EnableOctetCounting,
 		allowSkipPriHeader:           c.AllowSkipPriHeader,
 		nonTransparentFramingTrailer: c.NonTransparentFramingTrailer,
+		maxOctets:                    c.MaxOctets,
 	}, nil
 }

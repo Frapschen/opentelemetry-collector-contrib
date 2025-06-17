@@ -13,13 +13,15 @@ import (
 	"time"
 
 	"go.etcd.io/bbolt"
-	"go.opentelemetry.io/collector/extension/experimental/storage"
+	"go.opentelemetry.io/collector/extension/xextension/storage"
 	"go.uber.org/zap"
 )
 
 var defaultBucket = []byte(`default`)
 
 const (
+	TempDbPrefix = "tempdb"
+
 	elapsedKey       = "elapsed"
 	directoryKey     = "directory"
 	tempDirectoryKey = "tempDirectory"
@@ -48,7 +50,7 @@ func bboltOptions(timeout time.Duration, noSync bool) *bbolt.Options {
 
 func newClient(logger *zap.Logger, filePath string, timeout time.Duration, compactionCfg *CompactionConfig, noSync bool) (*fileStorageClient, error) {
 	options := bboltOptions(timeout, noSync)
-	db, err := bbolt.Open(filePath, 0600, options)
+	db, err := bbolt.Open(filePath, 0o600, options)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +94,7 @@ func (c *fileStorageClient) Delete(ctx context.Context, key string) error {
 }
 
 // Batch executes the specified operations in order. Get operation results are updated in place
-func (c *fileStorageClient) Batch(_ context.Context, ops ...storage.Operation) error {
+func (c *fileStorageClient) Batch(_ context.Context, ops ...*storage.Operation) error {
 	batch := func(tx *bbolt.Tx) error {
 		bucket := tx.Bucket(defaultBucket)
 		if bucket == nil {
@@ -152,7 +154,7 @@ func (c *fileStorageClient) Compact(compactionDirectory string, timeout time.Dur
 	var compactedDb *bbolt.DB
 
 	// create temporary file in compactionDirectory
-	file, err = os.CreateTemp(compactionDirectory, "tempdb")
+	file, err = os.CreateTemp(compactionDirectory, TempDbPrefix)
 	if err != nil {
 		return err
 	}
@@ -186,7 +188,7 @@ func (c *fileStorageClient) Compact(compactionDirectory string, timeout time.Dur
 		zap.String(tempDirectoryKey, file.Name()))
 
 	// cannot reuse newClient as db shouldn't contain any bucket
-	compactedDb, err = bbolt.Open(file.Name(), 0600, options)
+	compactedDb, err = bbolt.Open(file.Name(), 0o600, options)
 	if err != nil {
 		return err
 	}
@@ -207,7 +209,7 @@ func (c *fileStorageClient) Compact(compactionDirectory string, timeout time.Dur
 	// replace current db file with compacted db file
 	// we reopen the DB file irrespective of the success of the replace, as we can't leave it closed
 	moveErr := moveFileWithFallback(compactedDbPath, dbPath)
-	c.db, openErr = bbolt.Open(dbPath, 0600, options)
+	c.db, openErr = bbolt.Open(dbPath, 0o600, options)
 
 	// if we got errors for both rename and open, we'd rather return the open one
 	// this should not happen in any kind of normal circumstance - maybe we should panic instead?
@@ -335,7 +337,7 @@ func moveFileWithFallback(src string, dest string) error {
 		return err
 	}
 
-	if err = os.WriteFile(dest, data, 0600); err != nil {
+	if err = os.WriteFile(dest, data, 0o600); err != nil {
 		return err
 	}
 

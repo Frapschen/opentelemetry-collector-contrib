@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/component/componenttest"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/entry"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator"
@@ -17,21 +18,22 @@ import (
 func TestProcess(t *testing.T) {
 	cfg := NewConfigWithID("test")
 	cfg.OutputIDs = []string{"fake"}
-	op, err := cfg.Build(testutil.Logger(t))
+	set := componenttest.NewNopTelemetrySettings()
+	op, err := cfg.Build(set)
 	require.NoError(t, err)
 
 	fake := testutil.NewFakeOutput(t)
 	require.NoError(t, op.SetOutputs([]operator.Operator{fake}))
 
-	entry := entry.New()
-	entry.AddAttribute("label", "value")
-	entry.AddResourceKey("resource", "value")
-	entry.TraceID = []byte{0x01}
-	entry.SpanID = []byte{0x01}
-	entry.TraceFlags = []byte{0x01}
+	val := entry.New()
+	val.AddAttribute("label", "value")
+	val.AddResourceKey("resource", "value")
+	val.TraceID = []byte{0x01}
+	val.SpanID = []byte{0x01}
+	val.TraceFlags = []byte{0x01}
 
-	expected := entry.Copy()
-	err = op.Process(context.Background(), entry)
+	expected := val.Copy()
+	err = op.ProcessBatch(context.Background(), []*entry.Entry{val})
 	require.NoError(t, err)
 
 	fake.ExpectEntry(t, expected)

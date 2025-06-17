@@ -38,17 +38,19 @@ func NewFactory() receiver.Factory {
 // Default configuration for the generic webhook receiver
 func createDefaultConfig() component.Config {
 	return &Config{
-		Path:         defaultPath,
-		HealthPath:   defaultHealthPath,
-		ReadTimeout:  defaultReadTimeout,
-		WriteTimeout: defaultWriteTimeout,
+		Path:                       defaultPath,
+		HealthPath:                 defaultHealthPath,
+		ReadTimeout:                defaultReadTimeout,
+		WriteTimeout:               defaultWriteTimeout,
+		ConvertHeadersToAttributes: false, // optional, off by default
+		SplitLogsAtNewLine:         false,
 	}
 }
 
 // createLogsReceiver creates a logs receiver based on provided config.
 func createLogsReceiver(
 	_ context.Context,
-	params receiver.CreateSettings,
+	params receiver.Settings,
 	cfg component.Config,
 	consumer consumer.Logs,
 ) (receiver.Logs, error) {

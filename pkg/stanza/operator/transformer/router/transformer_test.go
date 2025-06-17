@@ -9,8 +9,10 @@ import (
 
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/component/componenttest"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/entry"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/errors"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator/helper"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/testutil"
@@ -183,33 +185,37 @@ func TestTransformer(t *testing.T) {
 			cfg.Routes = tc.routes
 			cfg.Default = tc.defaultOutput
 
-			op, err := cfg.Build(testutil.Logger(t))
+			set := componenttest.NewNopTelemetrySettings()
+			op, err := cfg.Build(set)
 			require.NoError(t, err)
 
 			results := map[string]int{}
 			var attributes map[string]any
 
 			mock1 := testutil.NewMockOperator("output1")
-			mock1.On("Process", mock.Anything, mock.Anything).Return(nil).Run(func(args mock.Arguments) {
+			mock1.On(
+				"Process", mock.Anything, mock.Anything,
+			).Return(
+				errors.NewError("Operator can not process logs.", ""),
+			).Run(func(args mock.Arguments) {
 				results["output1"]++
-				if entry, ok := args[1].(*entry.Entry); ok {
-					attributes = entry.Attributes
+				if e, ok := args[1].(*entry.Entry); ok {
+					attributes = e.Attributes
 				}
 			})
 
 			mock2 := testutil.NewMockOperator("output2")
 			mock2.On("Process", mock.Anything, mock.Anything).Return(nil).Run(func(args mock.Arguments) {
 				results["output2"]++
-				if entry, ok := args[1].(*entry.Entry); ok {
-					attributes = entry.Attributes
+				if e, ok := args[1].(*entry.Entry); ok {
+					attributes = e.Attributes
 				}
 			})
 
-			routerOperator := op.(*Transformer)
-			err = routerOperator.SetOutputs([]operator.Operator{mock1, mock2})
+			err = op.SetOutputs([]operator.Operator{mock1, mock2})
 			require.NoError(t, err)
 
-			err = routerOperator.Process(context.Background(), tc.input)
+			err = op.ProcessBatch(context.Background(), []*entry.Entry{tc.input})
 			require.NoError(t, err)
 
 			require.Equal(t, tc.expectedCounts, results)

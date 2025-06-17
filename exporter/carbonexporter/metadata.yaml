@@ -1,13 +1,14 @@
 type: carbon
-scope_name: otelcol/carbon
 
 status:
   class: exporter
   stability:
-    beta: [metrics]
+    unmaintained: [metrics]
   distributions: [contrib]
   codeowners:
-    active: [aboguszewski-sumo]
+    active: []
+    emeritus: [aboguszewski-sumo]
+    seeking_new: true
 
 tests:
   expect_consumer_error: true

@@ -4,12 +4,14 @@
 package regex // import "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator/parser/regex"
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 
+	"go.opentelemetry.io/collector/component"
 	"go.uber.org/zap"
 
-	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/errors"
+	stanza_errors "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/errors"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator/helper"
 )
@@ -44,14 +46,14 @@ type Config struct {
 }
 
 // Build will build a regex parser operator.
-func (c Config) Build(logger *zap.SugaredLogger) (operator.Operator, error) {
-	parserOperator, err := c.ParserConfig.Build(logger)
+func (c Config) Build(set component.TelemetrySettings) (operator.Operator, error) {
+	parserOperator, err := c.ParserConfig.Build(set)
 	if err != nil {
 		return nil, err
 	}
 
 	if c.Regex == "" {
-		return nil, fmt.Errorf("missing required field 'regex'")
+		return nil, errors.New("missing required field 'regex'")
 	}
 
 	r, err := regexp.Compile(c.Regex)
@@ -66,7 +68,7 @@ func (c Config) Build(logger *zap.SugaredLogger) (operator.Operator, error) {
 		}
 	}
 	if namedCaptureGroups == 0 {
-		return nil, errors.NewError(
+		return nil, stanza_errors.NewError(
 			"no named capture groups in regex pattern",
 			"use named capture groups like '^(?P<my_key>.*)$' to specify the key name for the parsed field",
 		)
@@ -79,7 +81,11 @@ func (c Config) Build(logger *zap.SugaredLogger) (operator.Operator, error) {
 
 	if c.Cache.Size > 0 {
 		op.cache = newMemoryCache(c.Cache.Size, 0)
-		logger.Debugf("configured %s with memory cache of size %d", op.ID(), op.cache.maxSize())
+		set.Logger.Debug(
+			"configured memory cache",
+			zap.String("operator_id", op.ID()),
+			zap.Uint16("size", op.cache.maxSize()),
+		)
 	}
 
 	return op, nil

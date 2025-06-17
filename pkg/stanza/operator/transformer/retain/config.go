@@ -4,10 +4,10 @@
 package retain // import "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator/transformer/retain"
 
 import (
-	"fmt"
+	"errors"
 	"strings"
 
-	"go.uber.org/zap"
+	"go.opentelemetry.io/collector/component"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/entry"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator"
@@ -39,13 +39,13 @@ type Config struct {
 }
 
 // Build will build a retain operator from the supplied configuration
-func (c Config) Build(logger *zap.SugaredLogger) (operator.Operator, error) {
-	transformerOperator, err := c.TransformerConfig.Build(logger)
+func (c Config) Build(set component.TelemetrySettings) (operator.Operator, error) {
+	transformerOperator, err := c.TransformerConfig.Build(set)
 	if err != nil {
 		return nil, err
 	}
-	if c.Fields == nil || len(c.Fields) == 0 {
-		return nil, fmt.Errorf("retain: 'fields' is empty")
+	if len(c.Fields) == 0 {
+		return nil, errors.New("retain: 'fields' is empty")
 	}
 
 	retainOp := &Transformer{

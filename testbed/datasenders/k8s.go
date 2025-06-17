@@ -108,7 +108,7 @@ func (f *FileLogK8sWriter) convertLogToTextLine(lr plog.LogRecord) []byte {
 		sb.WriteString(lr.Body().Str())
 	}
 
-	lr.Attributes().Range(func(k string, v pcommon.Value) bool {
+	for k, v := range lr.Attributes().All() {
 		sb.WriteString(" ")
 		sb.WriteString(k)
 		sb.WriteString("=")
@@ -124,8 +124,7 @@ func (f *FileLogK8sWriter) convertLogToTextLine(lr plog.LogRecord) []byte {
 		default:
 			panic("missing case")
 		}
-		return true
-	})
+	}
 
 	return []byte(sb.String())
 }
@@ -220,6 +219,21 @@ func NewKubernetesContainerWriter() *FileLogK8sWriter {
       - type: move
         from: attributes.uid
         to: attributes["k8s.pod.uid"]
+  `)
+}
+
+// NewKubernetesContainerParserWriter returns FileLogK8sWriter with configuration
+// to recognize and parse kubernetes container logs using the container parser
+func NewKubernetesContainerParserWriter() *FileLogK8sWriter {
+	return NewFileLogK8sWriter(`
+  filelog:
+    include: [ %s ]
+    start_at: beginning
+    include_file_path: true
+    include_file_name: false
+    operators:
+      - type: container
+        id: container-parser
   `)
 }
 

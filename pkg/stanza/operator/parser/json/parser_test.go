@@ -5,10 +5,13 @@ package json
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/component/componenttest"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/entry"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator"
@@ -18,14 +21,16 @@ import (
 
 func newTestParser(t *testing.T) *Parser {
 	config := NewConfigWithID("test")
-	op, err := config.Build(testutil.Logger(t))
+	set := componenttest.NewNopTelemetrySettings()
+	op, err := config.Build(set)
 	require.NoError(t, err)
 	return op.(*Parser)
 }
 
 func TestConfigBuild(t *testing.T) {
 	config := NewConfigWithID("test")
-	op, err := config.Build(testutil.Logger(t))
+	set := componenttest.NewNopTelemetrySettings()
+	op, err := config.Build(set)
 	require.NoError(t, err)
 	require.IsType(t, &Parser{}, op)
 }
@@ -33,30 +38,27 @@ func TestConfigBuild(t *testing.T) {
 func TestConfigBuildFailure(t *testing.T) {
 	config := NewConfigWithID("test")
 	config.OnError = "invalid_on_error"
-	_, err := config.Build(testutil.Logger(t))
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "invalid `on_error` field")
+	set := componenttest.NewNopTelemetrySettings()
+	_, err := config.Build(set)
+	require.ErrorContains(t, err, "invalid `on_error` field")
 }
 
 func TestParserStringFailure(t *testing.T) {
 	parser := newTestParser(t)
 	_, err := parser.parse("invalid")
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "error found in #1 byte")
+	require.ErrorContains(t, err, "expected { character for map value")
 }
 
 func TestParserByteFailure(t *testing.T) {
 	parser := newTestParser(t)
 	_, err := parser.parse([]byte("invalid"))
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "type []uint8 cannot be parsed as JSON")
+	require.ErrorContains(t, err, "type []uint8 cannot be parsed as JSON")
 }
 
 func TestParserInvalidType(t *testing.T) {
 	parser := newTestParser(t)
 	_, err := parser.parse([]int{})
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "type []int cannot be parsed as JSON")
+	require.ErrorContains(t, err, "type []int cannot be parsed as JSON")
 }
 
 func TestJSONImplementations(t *testing.T) {
@@ -135,6 +137,116 @@ func TestParser(t *testing.T) {
 				ScopeName: "logger",
 			},
 		},
+		{
+			"parse_ints_disabled",
+			func(_ *Config) {},
+			&entry.Entry{
+				Body: `{"int":1,"float":1.0}`,
+			},
+			&entry.Entry{
+				Attributes: map[string]any{
+					"int":   float64(1),
+					"float": float64(1),
+				},
+				Body: `{"int":1,"float":1.0}`,
+			},
+		},
+		{
+			"parse_ints_simple",
+			func(p *Config) {
+				p.ParseInts = true
+			},
+			&entry.Entry{
+				Body: `{"int":1,"float":1.0}`,
+			},
+			&entry.Entry{
+				Attributes: map[string]any{
+					"int":   int64(1),
+					"float": float64(1),
+				},
+				Body: `{"int":1,"float":1.0}`,
+			},
+		},
+		{
+			"parse_ints_nested",
+			func(p *Config) {
+				p.ParseInts = true
+			},
+			&entry.Entry{
+				Body: `{"int":1,"float":1.0,"nested":{"int":2,"float":2.0}}`,
+			},
+			&entry.Entry{
+				Attributes: map[string]any{
+					"int":   int64(1),
+					"float": float64(1),
+					"nested": map[string]any{
+						"int":   int64(2),
+						"float": float64(2),
+					},
+				},
+				Body: `{"int":1,"float":1.0,"nested":{"int":2,"float":2.0}}`,
+			},
+		},
+		{
+			"parse_ints_arrays",
+			func(p *Config) {
+				p.ParseInts = true
+			},
+			&entry.Entry{
+				Body: `{"int":1,"float":1.0,"nested":{"int":2,"float":2.0},"array":[1,2]}`,
+			},
+			&entry.Entry{
+				Attributes: map[string]any{
+					"int":   int64(1),
+					"float": float64(1),
+					"nested": map[string]any{
+						"int":   int64(2),
+						"float": float64(2),
+					},
+					"array": []any{int64(1), int64(2)},
+				},
+				Body: `{"int":1,"float":1.0,"nested":{"int":2,"float":2.0},"array":[1,2]}`,
+			},
+		},
+		{
+			"parse_ints_mixed_arrays",
+			func(p *Config) {
+				p.ParseInts = true
+			},
+			&entry.Entry{
+				Body: `{"int":1,"float":1.0,"mixed_array":[1,1.5,2]}`,
+			},
+			&entry.Entry{
+				Attributes: map[string]any{
+					"int":         int64(1),
+					"float":       float64(1),
+					"mixed_array": []any{int64(1), float64(1.5), int64(2)},
+				},
+				Body: `{"int":1,"float":1.0,"mixed_array":[1,1.5,2]}`,
+			},
+		},
+		{
+			"parse_ints_nested_arrays",
+			func(p *Config) {
+				p.ParseInts = true
+			},
+			&entry.Entry{
+				Body: `{"int":1,"float":1.0,"nested":{"int":2,"float":2.0,"array":[1,2]},"array":[3,4]}`,
+			},
+			&entry.Entry{
+				Attributes: map[string]any{
+					"int":   int64(1),
+					"float": float64(1),
+					"nested": map[string]any{
+						"int":   int64(2),
+						"float": float64(2),
+						"array": []any{int64(1), int64(2)},
+					},
+					"array": []any{int64(3), int64(4)},
+				},
+				Body: `{"int":1,"float":1.0,"nested":{"int":2,"float":2.0,"array":[1,2]},"array":[3,4]}`,
+			},
+		},
 	}
 
 	for _, tc := range cases {
@@ -143,7 +255,8 @@ func TestParser(t *testing.T) {
 			cfg.OutputIDs = []string{"fake"}
 			tc.configure(cfg)
 
-			op, err := cfg.Build(testutil.Logger(t))
+			set := componenttest.NewNopTelemetrySettings()
+			op, err := cfg.Build(set)
 			require.NoError(t, err)
 
 			fake := testutil.NewFakeOutput(t)
@@ -157,5 +270,42 @@ func TestParser(t *testing.T) {
 			require.NoError(t, err)
 			fake.ExpectEntry(t, tc.expect)
 		})
+	}
+}
+
+func BenchmarkProcess(b *testing.B) {
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	cfg := NewConfig()
+
+	parser, err := cfg.Build(componenttest.NewNopTelemetrySettings())
+	require.NoError(b, err)
+
+	benchmarkOperator(b, parser)
+}
+
+func BenchmarkProcessParseInts(b *testing.B) {
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	cfg := NewConfig()
+	cfg.ParseInts = true
+
+	parser, err := cfg.Build(componenttest.NewNopTelemetrySettings())
+	require.NoError(b, err)
+
+	benchmarkOperator(b, parser)
+}
+
+func benchmarkOperator(b *testing.B, parser operator.Operator) {
+	body, err := os.ReadFile(filepath.Join("testdata", "testdata.json"))
+	require.NoError(b, err)
+
+	e := entry.Entry{Body: string(body)}
+
+	for i := 0; i < b.N; i++ {
+		err := parser.Process(context.Background(), &e)
+		require.NoError(b, err)
 	}
 }

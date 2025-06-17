@@ -18,9 +18,7 @@ const (
 )
 
 func TestHistogramDecomposeNoHistogram(t *testing.T) {
-	mp := exampleIntGaugeMetric()
-	metric := mp.metric
-	resourceAttributes := mp.attributes
+	metric, resourceAttributes := exampleIntGaugeMetric()
 	metrics := pmetric.NewMetrics()
 	resourceAttributes.CopyTo(metrics.ResourceMetrics().AppendEmpty().Resource().Attributes())
 	metric.MoveTo(metrics.ResourceMetrics().At(0).ScopeMetrics().AppendEmpty().Metrics().AppendEmpty())
@@ -144,7 +142,13 @@ func addExpectedHistogramBuckets(metrics pmetric.MetricSlice) {
 		bound, bucketCount := pair.float64, pair.int64
 		dataPoint := metric.Gauge().DataPoints().AppendEmpty()
 		dataPoint.Attributes().PutStr("container", "dolor")
-		dataPoint.Attributes().PutDouble(prometheusLeTag, bound)
+
+		if math.IsInf(bound, 1) {
+			dataPoint.Attributes().PutStr(prometheusLeTag, prometheusInfValue)
+		} else {
+			dataPoint.Attributes().PutDouble(prometheusLeTag, bound)
+		}
+
 		dataPoint.SetTimestamp(timestamp1)
 		dataPoint.SetIntValue(bucketCount)
 	}
@@ -164,9 +168,14 @@ func addExpectedHistogramBuckets(metrics pmetric.MetricSlice) {
 		bound, bucketCount := pair.float64, pair.int64
 		dataPoint := metric.Gauge().DataPoints().AppendEmpty()
 		dataPoint.Attributes().PutStr("container", "sit")
-		dataPoint.Attributes().PutDouble(prometheusLeTag, bound)
+
+		if math.IsInf(bound, 1) {
+			dataPoint.Attributes().PutStr(prometheusLeTag, prometheusInfValue)
+		} else {
+			dataPoint.Attributes().PutDouble(prometheusLeTag, bound)
+		}
+
 		dataPoint.SetTimestamp(timestamp2)
 		dataPoint.SetIntValue(bucketCount)
 	}
-
 }

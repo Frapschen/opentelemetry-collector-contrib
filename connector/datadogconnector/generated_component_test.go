@@ -12,11 +12,15 @@ import (
 	"go.opentelemetry.io/collector/confmap/confmaptest"
 	"go.opentelemetry.io/collector/connector"
 	"go.opentelemetry.io/collector/connector/connectortest"
+	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/consumer/consumertest"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
+var typ = component.MustNewType("datadog")
+
 func TestComponentFactoryType(t *testing.T) {
-	require.Equal(t, "datadog", NewFactory().Type().String())
+	require.Equal(t, typ, NewFactory().Type())
 }
 
 func TestComponentConfigStruct(t *testing.T) {
@@ -27,21 +31,23 @@ func TestComponentLifecycle(t *testing.T) {
 	factory := NewFactory()
 
 	tests := []struct {
+		createFn func(ctx context.Context, set connector.Settings, cfg component.Config) (component.Component, error)
 		name     string
-		createFn func(ctx context.Context, set connector.CreateSettings, cfg component.Config) (component.Component, error)
 	}{
 
 		{
 			name: "traces_to_metrics",
-			createFn: func(ctx context.Context, set connector.CreateSettings, cfg component.Config) (component.Component, error) {
-				return factory.CreateTracesToMetrics(ctx, set, cfg, consumertest.NewNop())
+			createFn: func(ctx context.Context, set connector.Settings, cfg component.Config) (component.Component, error) {
+				router := connector.NewMetricsRouter(map[pipeline.ID]consumer.Metrics{pipeline.NewID(pipeline.SignalMetrics): consumertest.NewNop()})
+				return factory.CreateTracesToMetrics(ctx, set, cfg, router)
 			},
 		},
 
 		{
 			name: "traces_to_traces",
-			createFn: func(ctx context.Context, set connector.CreateSettings, cfg component.Config) (component.Component, error) {
-				return factory.CreateTracesToTraces(ctx, set, cfg, consumertest.NewNop())
+			createFn: func(ctx context.Context, set connector.Settings, cfg component.Config) (component.Component, error) {
+				router := connector.NewTracesRouter(map[pipeline.ID]consumer.Traces{pipeline.NewID(pipeline.SignalTraces): consumertest.NewNop()})
+				return factory.CreateTracesToTraces(ctx, set, cfg, router)
 			},
 		},
 	}
@@ -51,23 +57,23 @@ func TestComponentLifecycle(t *testing.T) {
 	cfg := factory.CreateDefaultConfig()
 	sub, err := cm.Sub("tests::config")
 	require.NoError(t, err)
-	require.NoError(t, component.UnmarshalConfig(sub, cfg))
+	require.NoError(t, sub.Unmarshal(&cfg))
 
-	for _, test := range tests {
-		t.Run(test.name+"-shutdown", func(t *testing.T) {
-			c, err := test.createFn(context.Background(), connectortest.NewNopCreateSettings(), cfg)
+	for _, tt := range tests {
+		t.Run(tt.name+"-shutdown", func(t *testing.T) {
+			c, err := tt.createFn(context.Background(), connectortest.NewNopSettings(typ), cfg)
 			require.NoError(t, err)
 			err = c.Shutdown(context.Background())
 			require.NoError(t, err)
 		})
-		t.Run(test.name+"-lifecycle", func(t *testing.T) {
-			firstConnector, err := test.createFn(context.Background(), connectortest.NewNopCreateSettings(), cfg)
+		t.Run(tt.name+"-lifecycle", func(t *testing.T) {
+			firstConnector, err := tt.createFn(context.Background(), connectortest.NewNopSettings(typ), cfg)
 			require.NoError(t, err)
 			host := componenttest.NewNopHost()
 			require.NoError(t, err)
 			require.NoError(t, firstConnector.Start(context.Background(), host))
 			require.NoError(t, firstConnector.Shutdown(context.Background()))
-			secondConnector, err := test.createFn(context.Background(), connectortest.NewNopCreateSettings(), cfg)
+			secondConnector, err := tt.createFn(context.Background(), connectortest.NewNopSettings(typ), cfg)
 			require.NoError(t, err)
 			require.NoError(t, secondConnector.Start(context.Background(), host))
 			require.NoError(t, secondConnector.Shutdown(context.Background()))

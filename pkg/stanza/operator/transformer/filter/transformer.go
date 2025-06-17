@@ -22,6 +22,10 @@ type Transformer struct {
 	dropCutoff *big.Int // [0..1000)
 }
 
+func (t *Transformer) ProcessBatch(ctx context.Context, entries []*entry.Entry) error {
+	return t.ProcessBatchWith(ctx, entries, t.Process)
+}
+
 // Process will drop incoming entries that match the filter expression
 func (t *Transformer) Process(ctx context.Context, entry *entry.Entry) error {
 	env := helper.GetExprEnv(entry)
@@ -29,19 +33,18 @@ func (t *Transformer) Process(ctx context.Context, entry *entry.Entry) error {
 
 	matches, err := vm.Run(t.expression, env)
 	if err != nil {
-		t.Errorf("Running expressing returned an error", zap.Error(err))
+		t.Logger().Error("Running expressing returned an error", zap.Error(err))
 		return nil
 	}
 
 	filtered, ok := matches.(bool)
 	if !ok {
-		t.Errorf("Expression did not compile as a boolean")
+		t.Logger().Error("Expression did not compile as a boolean")
 		return nil
 	}
 
 	if !filtered {
-		t.Write(ctx, entry)
-		return nil
+		return t.Write(ctx, entry)
 	}
 
 	i, err := randInt(rand.Reader, upperBound)
@@ -50,7 +53,10 @@ func (t *Transformer) Process(ctx context.Context, entry *entry.Entry) error {
 	}
 
 	if i.Cmp(t.dropCutoff) >= 0 {
-		t.Write(ctx, entry)
+		err := t.Write(ctx, entry)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

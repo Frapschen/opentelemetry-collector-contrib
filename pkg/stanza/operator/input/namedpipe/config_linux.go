@@ -8,9 +8,9 @@ package namedpipe // import "github.com/open-telemetry/opentelemetry-collector-c
 import (
 	"fmt"
 
-	"go.uber.org/zap"
+	"go.opentelemetry.io/collector/component"
 
-	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/decode"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/coreinternal/textutils"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator"
 )
 
@@ -19,13 +19,13 @@ func init() {
 }
 
 // Build will build a namedpipe input operator.
-func (c *Config) Build(logger *zap.SugaredLogger) (operator.Operator, error) {
-	inputOperator, err := c.InputConfig.Build(logger)
+func (c *Config) Build(set component.TelemetrySettings) (operator.Operator, error) {
+	inputOperator, err := c.InputConfig.Build(set)
 	if err != nil {
 		return nil, err
 	}
 
-	enc, err := decode.LookupEncoding(c.Encoding)
+	enc, err := textutils.LookupEncoding(c.Encoding)
 	if err != nil {
 		return nil, fmt.Errorf("failed to lookup encoding %q: %w", c.Encoding, err)
 	}

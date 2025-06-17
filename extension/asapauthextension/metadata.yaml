@@ -1,5 +1,4 @@
 type: asapclient
-scope_name: otelcol/asapauth
 
 status:
   class: extension
@@ -13,3 +12,5 @@ status:
 tests:
   skip_lifecycle: true
   skip_shutdown: true
+  goleak:
+    skip: true

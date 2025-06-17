@@ -28,6 +28,8 @@ func (ms *MetricConfig) Unmarshal(parser *confmap.Conf) error {
 
 // MetricsConfig provides config for iis metrics.
 type MetricsConfig struct {
+	IisApplicationPoolState   MetricConfig `mapstructure:"iis.application_pool.state"`
+	IisApplicationPoolUptime  MetricConfig `mapstructure:"iis.application_pool.uptime"`
 	IisConnectionActive       MetricConfig `mapstructure:"iis.connection.active"`
 	IisConnectionAnonymous    MetricConfig `mapstructure:"iis.connection.anonymous"`
 	IisConnectionAttemptCount MetricConfig `mapstructure:"iis.connection.attempt.count"`
@@ -44,6 +46,12 @@ type MetricsConfig struct {
 
 func DefaultMetricsConfig() MetricsConfig {
 	return MetricsConfig{
+		IisApplicationPoolState: MetricConfig{
+			Enabled: false,
+		},
+		IisApplicationPoolUptime: MetricConfig{
+			Enabled: false,
+		},
 		IisConnectionActive: MetricConfig{
 			Enabled: true,
 		},
@@ -85,9 +93,14 @@ func DefaultMetricsConfig() MetricsConfig {
 
 // ResourceAttributeConfig provides common config for a particular resource attribute.
 type ResourceAttributeConfig struct {
-	Enabled bool            `mapstructure:"enabled"`
-	Include []filter.Config `mapstructure:"include"`
-	Exclude []filter.Config `mapstructure:"exclude"`
+	Enabled bool `mapstructure:"enabled"`
+	// Experimental: MetricsInclude defines a list of filters for attribute values.
+	// If the list is not empty, only metrics with matching resource attribute values will be emitted.
+	MetricsInclude []filter.Config `mapstructure:"metrics_include"`
+	// Experimental: MetricsExclude defines a list of filters for attribute values.
+	// If the list is not empty, metrics with matching resource attribute values will not be emitted.
+	// MetricsInclude has higher priority than MetricsExclude.
+	MetricsExclude []filter.Config `mapstructure:"metrics_exclude"`
 
 	enabledSetByUser bool
 }

@@ -10,7 +10,7 @@ import (
 
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/processor"
-	conventions "go.opentelemetry.io/collector/semconv/v1.6.1"
+	conventions "go.opentelemetry.io/otel/semconv/v1.6.1"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/metadataproviders/azure"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/resourcedetectionprocessor/internal"
@@ -31,7 +31,7 @@ type Detector struct {
 }
 
 // NewDetector creates a new AKS detector
-func NewDetector(_ processor.CreateSettings, dcfg internal.DetectorConfig) (internal.Detector, error) {
+func NewDetector(_ processor.Settings, dcfg internal.DetectorConfig) (internal.Detector, error) {
 	cfg := dcfg.(Config)
 	return &Detector{provider: azure.NewProvider(), resourceAttributes: cfg.ResourceAttributes}, nil
 }
@@ -51,13 +51,13 @@ func (d *Detector) Detect(ctx context.Context) (resource pcommon.Resource, schem
 
 	attrs := res.Attributes()
 	if d.resourceAttributes.CloudProvider.Enabled {
-		attrs.PutStr(conventions.AttributeCloudProvider, conventions.AttributeCloudProviderAzure)
+		attrs.PutStr(string(conventions.CloudProviderKey), conventions.CloudProviderAzure.Value.AsString())
 	}
 	if d.resourceAttributes.CloudPlatform.Enabled {
-		attrs.PutStr(conventions.AttributeCloudPlatform, conventions.AttributeCloudPlatformAzureAKS)
+		attrs.PutStr(string(conventions.CloudPlatformKey), conventions.CloudPlatformAzureAKS.Value.AsString())
 	}
 	if d.resourceAttributes.K8sClusterName.Enabled {
-		attrs.PutStr(conventions.AttributeK8SClusterName, parseClusterName(m.ResourceGroupName))
+		attrs.PutStr(string(conventions.K8SClusterNameKey), parseClusterName(m.ResourceGroupName))
 	}
 
 	return res, conventions.SchemaURL, nil

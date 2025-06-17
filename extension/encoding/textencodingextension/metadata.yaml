@@ -1,7 +1,7 @@
 type: text_encoding
-scope_name: otelcol/textencoding
 
 status:
+  disable_codecov_badge: true
   class: extension
   stability:
     development: [extension]

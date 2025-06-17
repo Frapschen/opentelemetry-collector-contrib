@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/component/componenttest"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/entry"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator"
@@ -194,14 +195,14 @@ func TestBuildAndProcess(t *testing.T) {
 			cfg := tc.cfg
 			cfg.OutputIDs = []string{"fake"}
 			cfg.OnError = "send"
-			op, err := cfg.Build(testutil.Logger(t))
+			set := componenttest.NewNopTelemetrySettings()
+			op, err := cfg.Build(set)
 			require.NoError(t, err)
 
-			unqouteOp := op.(*Transformer)
 			fake := testutil.NewFakeOutput(t)
-			require.NoError(t, unqouteOp.SetOutputs([]operator.Operator{fake}))
+			require.NoError(t, op.SetOutputs([]operator.Operator{fake}))
 			val := tc.input()
-			err = unqouteOp.Process(context.Background(), val)
+			err = op.ProcessBatch(context.Background(), []*entry.Entry{val})
 			if tc.expectErr != "" {
 				require.Equal(t, tc.expectErr, err.Error())
 			} else {

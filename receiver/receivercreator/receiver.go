@@ -5,11 +5,13 @@ package receivercreator // import "github.com/open-telemetry/opentelemetry-colle
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/receiver"
+	"go.opentelemetry.io/collector/service/hostcapabilities"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/extension/observer"
 )
@@ -18,7 +20,7 @@ var _ receiver.Metrics = (*receiverCreator)(nil)
 
 // receiverCreator implements consumer.Metrics.
 type receiverCreator struct {
-	params              receiver.CreateSettings
+	params              receiver.Settings
 	cfg                 *Config
 	nextLogsConsumer    consumer.Logs
 	nextMetricsConsumer consumer.Metrics
@@ -27,15 +29,26 @@ type receiverCreator struct {
 	observables         []observer.Observable
 }
 
-func newReceiverCreator(params receiver.CreateSettings, cfg *Config) receiver.Metrics {
+func newReceiverCreator(params receiver.Settings, cfg *Config) receiver.Metrics {
 	return &receiverCreator{
 		params: params,
 		cfg:    cfg,
 	}
 }
 
+// host is an interface that the component.Host passed to receivercreator's Start function must implement
+type host interface {
+	component.Host
+	hostcapabilities.ComponentFactory
+}
+
 // Start receiver_creator.
-func (rc *receiverCreator) Start(_ context.Context, host component.Host) error {
+func (rc *receiverCreator) Start(_ context.Context, h component.Host) error {
+	rcHost, ok := h.(host)
+	if !ok {
+		return errors.New("the receivercreator is not compatible with the provided component.host")
+	}
+
 	rc.observerHandler = &observerHandler{
 		config:                rc.cfg,
 		params:                rc.params,
@@ -43,14 +56,14 @@ func (rc *receiverCreator) Start(_ context.Context, host component.Host) error {
 		nextLogsConsumer:      rc.nextLogsConsumer,
 		nextMetricsConsumer:   rc.nextMetricsConsumer,
 		nextTracesConsumer:    rc.nextTracesConsumer,
-		runner:                newReceiverRunner(rc.params, host),
+		runner:                newReceiverRunner(rc.params, rcHost),
 	}
 
 	observers := map[component.ID]observer.Observable{}
 
 	// Match all configured observables to the extensions that are running.
 	for _, watchObserver := range rc.cfg.WatchObservers {
-		for cid, ext := range host.GetExtensions() {
+		for cid, ext := range rcHost.GetExtensions() {
 			if cid != watchObserver {
 				continue
 			}

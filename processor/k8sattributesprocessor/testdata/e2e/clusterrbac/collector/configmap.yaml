@@ -11,7 +11,8 @@ data:
         tls:
           insecure: true
     extensions:
-      health_check: {}
+      health_check:
+        endpoint: 0.0.0.0:13133
     processors:
       k8sattributes:
         extract:
@@ -19,6 +20,9 @@ data:
           - from: pod
             key: workload
             tag_name: k8s.annotations.workload
+          - from: deployment
+            key: workload
+            tag_name: simple-deployment-workload-annotation
           labels:
           - from: pod
             key: app
@@ -47,6 +51,7 @@ data:
           - k8s.cluster.uid
           - container.id
           - container.image.name
+          - container.image.repo_digests
           - container.image.tag
         pod_association:
         - sources:

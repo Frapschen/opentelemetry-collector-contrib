@@ -64,9 +64,13 @@ type HecTelemetry struct {
 
 // Config defines configuration for Splunk exporter.
 type Config struct {
-	confighttp.ClientConfig      `mapstructure:",squash"`
-	exporterhelper.QueueSettings `mapstructure:"sending_queue"`
-	configretry.BackOffConfig    `mapstructure:"retry_on_failure"`
+	confighttp.ClientConfig   `mapstructure:",squash"`
+	QueueSettings             exporterhelper.QueueBatchConfig `mapstructure:"sending_queue"`
+	configretry.BackOffConfig `mapstructure:"retry_on_failure"`
+
+	// Experimental: This configuration is at the early stage of development and may change without backward compatibility
+	// until https://github.com/open-telemetry/opentelemetry-collector/issues/8122 is resolved.
+	BatcherConfig exporterhelper.BatcherConfig `mapstructure:"batcher"` //nolint:staticcheck
 
 	// LogDataEnabled can be used to disable sending logs by the exporter.
 	LogDataEnabled bool `mapstructure:"log_data_enabled"`
@@ -111,7 +115,12 @@ type Config struct {
 
 	// App version is used to track telemetry information for Splunk App's using HEC by App version. Defaults to the current OpenTelemetry Collector Contrib build version.
 	SplunkAppVersion string `mapstructure:"splunk_app_version"`
+
+	// OtelAttrsToHec creates a mapping from attributes to HEC specific metadata: source, sourcetype, index and host.
+	OtelAttrsToHec splunk.HecToOtelAttrs `mapstructure:"otel_attrs_to_hec_metadata"`
+
 	// HecToOtelAttrs creates a mapping from attributes to HEC specific metadata: source, sourcetype, index and host.
+	// Deprecated: [v0.113.0] Use OtelAttrsToHec instead.
 	HecToOtelAttrs splunk.HecToOtelAttrs `mapstructure:"hec_metadata_to_otel_attrs"`
 	// HecFields creates a mapping from attributes to HEC fields.
 	HecFields OtelToHecFields `mapstructure:"otel_to_hec_fields"`
@@ -136,8 +145,7 @@ type Config struct {
 }
 
 func (cfg *Config) getURL() (out *url.URL, err error) {
-
-	out, err = url.Parse(cfg.ClientConfig.Endpoint)
+	out, err = url.Parse(cfg.Endpoint)
 	if err != nil {
 		return out, err
 	}
@@ -153,7 +161,7 @@ func (cfg *Config) Validate() error {
 	if !cfg.LogDataEnabled && !cfg.ProfilingDataEnabled {
 		return errors.New(`either "log_data_enabled" or "profiling_data_enabled" has to be true`)
 	}
-	if cfg.ClientConfig.Endpoint == "" {
+	if cfg.Endpoint == "" {
 		return errors.New(`requires a non-empty "endpoint"`)
 	}
 	_, err := cfg.getURL()

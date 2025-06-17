@@ -6,6 +6,7 @@ package adapter // import "github.com/open-telemetry/opentelemetry-collector-con
 import (
 	_ "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator/output/file" // Register parsers and transformers for stanza-based log receivers
 	_ "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator/output/stdout"
+	_ "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator/parser/container"
 	_ "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator/parser/csv"
 	_ "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator/parser/json"
 	_ "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator/parser/jsonarray"
@@ -25,6 +26,7 @@ import (
 	_ "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator/transformer/move"
 	_ "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator/transformer/noop"
 	_ "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator/transformer/recombine"
+	_ "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator/transformer/regexreplace"
 	_ "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator/transformer/remove"
 	_ "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator/transformer/retain"
 	_ "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator/transformer/router"

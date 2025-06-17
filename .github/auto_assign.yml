@@ -11,23 +11,25 @@ useAssigneeGroups: true
 assigneeGroups:
   approvers_maintainers:
     # Approvers
-    - Aneurysm9
-    - atoulme
-    - bryan-aguilar
+    - ArthurSens
+    - braydonk
+    - ChrsMark
     - crobert-1
     - dashpole
-    - songy23
+    - dehaansa
+    - edmocosta
+    - mwear
     - fatsheep9146
     # Maintainers
-    - astencel-sumo
+    - andrzej-stencel
+    - atoulme
     - bogdandrutu
     - codeboten
-    - djaglowski
     - dmitryax
     - evan-bradley
-    - jpkrohling
     - MovieStoreGuy
     - mx-psi
+    - songy23
     - TylerHelmuth
 
 # A number of assignees added to the pull request

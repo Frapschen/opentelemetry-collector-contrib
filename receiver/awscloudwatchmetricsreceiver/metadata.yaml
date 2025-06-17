@@ -1,13 +1,13 @@
 type: awscloudwatchmetrics
-scope_name: otelcol/awscloudwatchmetricsreceiver
 
 status:
   class: receiver
   stability:
-    development: [metrics]
+    unmaintained: [metrics]
   distributions: []
   codeowners:
-    active: [jpkrohling]
+    active: []
+    seeking_new: true
 
 tests:
   config:

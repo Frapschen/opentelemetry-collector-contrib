@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/component/componenttest"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/entry"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator"
@@ -17,6 +18,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator/input/tcp"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator/input/udp"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator/parser/syslog"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator/parser/syslog/syslogtest"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/pipeline"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/split/splittest"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/testutil"
@@ -28,7 +30,7 @@ var (
 		cfg := syslog.NewConfigWithID("test_syslog_parser")
 		return cfg
 	}
-	OctetCase = syslog.Case{
+	OctetCase = syslogtest.Case{
 		Name: "RFC6587 Octet Counting",
 		Config: func() *syslog.Config {
 			cfg := basicConfig()
@@ -65,7 +67,7 @@ var (
 		},
 		ValidForTCP: true,
 	}
-	WithMetadata = syslog.Case{
+	WithMetadata = syslogtest.Case{
 		Name: "RFC3164",
 		Config: func() *syslog.Config {
 			cfg := basicConfig()
@@ -98,20 +100,30 @@ var (
 )
 
 func TestInput(t *testing.T) {
-	cases, err := syslog.CreateCases(basicConfig)
+	cases, err := syslogtest.CreateCases(basicConfig)
 	require.NoError(t, err)
 	cases = append(cases, OctetCase)
 
 	for _, tc := range cases {
 		cfg := tc.Config.BaseConfig
 		if tc.ValidForTCP {
+			tcpCfg := NewConfigWithTCP(&cfg)
+			if tc.Name == syslogtest.RFC6587OctetCountingPreserveSpaceTest {
+				tcpCfg.TCP.TrimConfig.PreserveLeading = true
+				tcpCfg.TCP.TrimConfig.PreserveTrailing = true
+			}
 			t.Run(fmt.Sprintf("TCP-%s", tc.Name), func(t *testing.T) {
-				InputTest(t, tc, NewConfigWithTCP(&cfg), nil, nil)
+				InputTest(t, tc, tcpCfg, nil, nil)
 			})
 		}
 		if tc.ValidForUDP {
+			udpCfg := NewConfigWithUDP(&cfg)
+			if tc.Name == syslogtest.RFC6587OctetCountingPreserveSpaceTest {
+				udpCfg.UDP.TrimConfig.PreserveLeading = true
+				udpCfg.UDP.TrimConfig.PreserveTrailing = true
+			}
 			t.Run(fmt.Sprintf("UDP-%s", tc.Name), func(t *testing.T) {
-				InputTest(t, tc, NewConfigWithUDP(&cfg), nil, nil)
+				InputTest(t, tc, udpCfg, nil, nil)
 			})
 		}
 	}
@@ -120,24 +132,25 @@ func TestInput(t *testing.T) {
 	t.Run("TCPWithMetadata", func(t *testing.T) {
 		cfg := NewConfigWithTCP(&withMetadataCfg)
 		cfg.IdentifierConfig = helper.NewIdentifierConfig()
-		cfg.IdentifierConfig.Resource["service.name"] = helper.ExprStringConfig("apache_server")
+		cfg.Resource["service.name"] = helper.ExprStringConfig("apache_server")
 		cfg.AttributerConfig = helper.NewAttributerConfig()
-		cfg.AttributerConfig.Attributes["foo"] = helper.ExprStringConfig("bar")
+		cfg.Attributes["foo"] = helper.ExprStringConfig("bar")
 		InputTest(t, WithMetadata, cfg, map[string]any{"service.name": "apache_server"}, map[string]any{"foo": "bar"})
 	})
 
 	t.Run("UDPWithMetadata", func(t *testing.T) {
 		cfg := NewConfigWithUDP(&withMetadataCfg)
 		cfg.IdentifierConfig = helper.NewIdentifierConfig()
-		cfg.IdentifierConfig.Resource["service.name"] = helper.ExprStringConfig("apache_server")
+		cfg.Resource["service.name"] = helper.ExprStringConfig("apache_server")
 		cfg.AttributerConfig = helper.NewAttributerConfig()
-		cfg.AttributerConfig.Attributes["foo"] = helper.ExprStringConfig("bar")
+		cfg.Attributes["foo"] = helper.ExprStringConfig("bar")
 		InputTest(t, WithMetadata, cfg, map[string]any{"service.name": "apache_server"}, map[string]any{"foo": "bar"})
 	})
 }
 
-func InputTest(t *testing.T, tc syslog.Case, cfg *Config, rsrc map[string]any, attr map[string]any) {
-	op, err := cfg.Build(testutil.Logger(t))
+func InputTest(t *testing.T, tc syslogtest.Case, cfg *Config, rsrc map[string]any, attr map[string]any) {
+	set := componenttest.NewNopTelemetrySettings()
+	op, err := cfg.Build(set)
 	require.NoError(t, err)
 
 	fake := testutil.NewFakeOutput(t)
@@ -211,7 +224,8 @@ func TestSyslogIDs(t *testing.T) {
 
 	t.Run("TCP", func(t *testing.T) {
 		cfg := NewConfigWithTCP(basicConfig())
-		op, err := cfg.Build(testutil.Logger(t))
+		set := componenttest.NewNopTelemetrySettings()
+		op, err := cfg.Build(set)
 		require.NoError(t, err)
 		syslogInputOp := op.(*Input)
 		require.Equal(t, "test_syslog_internal_tcp", syslogInputOp.tcp.ID())
@@ -222,7 +236,8 @@ func TestSyslogIDs(t *testing.T) {
 	})
 	t.Run("UDP", func(t *testing.T) {
 		cfg := NewConfigWithUDP(basicConfig())
-		op, err := cfg.Build(testutil.Logger(t))
+		set := componenttest.NewNopTelemetrySettings()
+		op, err := cfg.Build(set)
 		require.NoError(t, err)
 		syslogInputOp := op.(*Input)
 		require.Equal(t, "test_syslog_internal_udp", syslogInputOp.udp.ID())
@@ -262,6 +277,13 @@ func TestOctetFramingSplitFunc(t *testing.T) {
 			input: []byte(`17 my log LOGEND 123`),
 			steps: []splittest.Step{
 				splittest.ExpectToken(`17 my log LOGEND 123`),
+			},
+		},
+		{
+			name:  "OneLogTrailingSpace",
+			input: []byte(`84 <13>1 2024-02-28T03:32:00.313226+00:00 192.168.65.1 inactive - - -  partition is p2 `),
+			steps: []splittest.Step{
+				splittest.ExpectToken(`84 <13>1 2024-02-28T03:32:00.313226+00:00 192.168.65.1 inactive - - -  partition is p2 `),
 			},
 		},
 		{

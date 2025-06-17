@@ -6,7 +6,7 @@ package router // import "github.com/open-telemetry/opentelemetry-collector-cont
 import (
 	"fmt"
 
-	"go.uber.org/zap"
+	"go.opentelemetry.io/collector/component"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator/helper"
@@ -45,8 +45,8 @@ type RouteConfig struct {
 }
 
 // Build will build a router operator from the supplied configuration
-func (c Config) Build(logger *zap.SugaredLogger) (operator.Operator, error) {
-	basicOperator, err := c.BasicConfig.Build(logger)
+func (c Config) Build(set component.TelemetrySettings) (operator.Operator, error) {
+	basicOperator, err := c.BasicConfig.Build(set)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +66,7 @@ func (c Config) Build(logger *zap.SugaredLogger) (operator.Operator, error) {
 			return nil, fmt.Errorf("failed to compile expression '%s': %w", routeConfig.Expression, err)
 		}
 
-		attributer, err := routeConfig.AttributerConfig.Build()
+		attributer, err := routeConfig.Build()
 		if err != nil {
 			return nil, fmt.Errorf("failed to build attributer for route '%s': %w", routeConfig.Expression, err)
 		}

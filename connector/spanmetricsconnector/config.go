@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/confmap/xconfmap"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/connector/spanmetricsconnector/internal/metrics"
@@ -23,10 +23,14 @@ var defaultHistogramBucketsMs = []float64{
 	2, 4, 6, 8, 10, 50, 100, 200, 400, 800, 1000, 1400, 2000, 5000, 10_000, 15_000,
 }
 
+var defaultDeltaTimestampCacheSize = 1000
+
 // Dimension defines the dimension name and optional default value if the Dimension is missing from a span attribute.
 type Dimension struct {
 	Name    string  `mapstructure:"name"`
 	Default *string `mapstructure:"default"`
+	// prevent unkeyed literal initialization
+	_ struct{}
 }
 
 // Config defines the configuration options for spanmetricsconnector.
@@ -39,11 +43,13 @@ type Config struct {
 	// The dimensions will be fetched from the span's attributes. Examples of some conventionally used attributes:
 	// https://github.com/open-telemetry/opentelemetry-collector/blob/main/model/semconv/opentelemetry.go.
 	Dimensions        []Dimension `mapstructure:"dimensions"`
+	CallsDimensions   []Dimension `mapstructure:"calls_dimensions"`
 	ExcludeDimensions []string    `mapstructure:"exclude_dimensions"`
 
 	// DimensionsCacheSize defines the size of cache for storing Dimensions, which helps to avoid cache memory growing
 	// indefinitely over the lifetime of the collector.
 	// Optional. See defaultDimensionsCacheSize in connector.go for the default value.
+	// Deprecated:  Please use AggregationCardinalityLimit instead
 	DimensionsCacheSize int `mapstructure:"dimensions_cache_size"`
 
 	// ResourceMetricsCacheSize defines the size of the cache holding metrics for a service. This is mostly relevant for
@@ -71,6 +77,9 @@ type Config struct {
 	// Default value (0) means that the metrics will never expire.
 	MetricsExpiration time.Duration `mapstructure:"metrics_expiration"`
 
+	// TimestampCacheSize controls the size of the cache used to keep track of delta metrics' TimestampUnixNano the last time it was flushed
+	TimestampCacheSize *int `mapstructure:"metric_timestamp_cache_size"`
+
 	// Namespace is the namespace of the metrics emitted by the connector.
 	Namespace string `mapstructure:"namespace"`
 
@@ -79,6 +88,10 @@ type Config struct {
 
 	// Events defines the configuration for events section of spans.
 	Events EventsConfig `mapstructure:"events"`
+
+	IncludeInstrumentationScope []string `mapstructure:"include_instrumentation_scope"`
+
+	AggregationCardinalityLimit int `mapstructure:"aggregation_cardinality_limit"`
 }
 
 type HistogramConfig struct {
@@ -86,20 +99,29 @@ type HistogramConfig struct {
 	Unit        metrics.Unit                `mapstructure:"unit"`
 	Exponential *ExponentialHistogramConfig `mapstructure:"exponential"`
 	Explicit    *ExplicitHistogramConfig    `mapstructure:"explicit"`
+	Dimensions  []Dimension                 `mapstructure:"dimensions"`
+	// prevent unkeyed literal initialization
+	_ struct{}
 }
 
 type ExemplarsConfig struct {
 	Enabled         bool `mapstructure:"enabled"`
 	MaxPerDataPoint *int `mapstructure:"max_per_data_point"`
+	// prevent unkeyed literal initialization
+	_ struct{}
 }
 
 type ExponentialHistogramConfig struct {
 	MaxSize int32 `mapstructure:"max_size"`
+	// prevent unkeyed literal initialization
+	_ struct{}
 }
 
 type ExplicitHistogramConfig struct {
 	// Buckets is the list of durations representing explicit histogram buckets.
 	Buckets []time.Duration `mapstructure:"buckets"`
+	// prevent unkeyed literal initialization
+	_ struct{}
 }
 
 type EventsConfig struct {
@@ -107,9 +129,11 @@ type EventsConfig struct {
 	Enabled bool `mapstructure:"enabled"`
 	// Dimensions defines the list of dimensions to add to the events metric.
 	Dimensions []Dimension `mapstructure:"dimensions"`
+	// prevent unkeyed literal initialization
+	_ struct{}
 }
 
-var _ component.ConfigValidator = (*Config)(nil)
+var _ xconfmap.Validator = (*Config)(nil)
 
 // Validate checks if the processor configuration is valid
 func (c Config) Validate() error {
@@ -118,13 +142,6 @@ func (c Config) Validate() error {
 	}
 	if err := validateEventDimensions(c.Events.Enabled, c.Events.Dimensions); err != nil {
 		return fmt.Errorf("failed validating event dimensions: %w", err)
-	}
-
-	if c.DimensionsCacheSize <= 0 {
-		return fmt.Errorf(
-			"invalid cache size: %v, the maximum number of the items in the cache should be positive",
-			c.DimensionsCacheSize,
-		)
 	}
 
 	if c.Histogram.Explicit != nil && c.Histogram.Exponential != nil {
@@ -139,6 +156,17 @@ func (c Config) Validate() error {
 		return fmt.Errorf("invalid metrics_expiration: %v, the duration should be positive", c.MetricsExpiration)
 	}
 
+	if c.GetAggregationTemporality() == pmetric.AggregationTemporalityDelta && c.GetDeltaTimestampCacheSize() <= 0 {
+		return fmt.Errorf(
+			"invalid delta timestamp cache size: %v, the maximum number of the items in the cache should be positive",
+			c.GetDeltaTimestampCacheSize(),
+		)
+	}
+
+	if c.AggregationCardinalityLimit < 0 {
+		return fmt.Errorf("invalid aggregation_cardinality_limit: %v, the limit should be positive", c.AggregationCardinalityLimit)
+	}
+
 	return nil
 }
 
@@ -149,6 +177,13 @@ func (c Config) GetAggregationTemporality() pmetric.AggregationTemporality {
 		return pmetric.AggregationTemporalityDelta
 	}
 	return pmetric.AggregationTemporalityCumulative
+}
+
+func (c Config) GetDeltaTimestampCacheSize() int {
+	if c.TimestampCacheSize != nil {
+		return *c.TimestampCacheSize
+	}
+	return defaultDeltaTimestampCacheSize
 }
 
 // validateDimensions checks duplicates for reserved dimensions and additional dimensions.
@@ -174,7 +209,7 @@ func validateEventDimensions(enabled bool, dimensions []Dimension) error {
 		return nil
 	}
 	if len(dimensions) == 0 {
-		return fmt.Errorf("no dimensions configured for events")
+		return errors.New("no dimensions configured for events")
 	}
 	return validateDimensions(dimensions)
 }

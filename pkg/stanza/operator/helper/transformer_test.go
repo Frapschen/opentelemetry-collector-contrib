@@ -5,16 +5,20 @@ package helper
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/component/componenttest"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"go.uber.org/zap/zaptest"
 	"go.uber.org/zap/zaptest/observer"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/entry"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/fileconsumer/attrs"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/testutil"
 )
@@ -22,27 +26,30 @@ import (
 func TestTransformerConfigMissingBase(t *testing.T) {
 	cfg := NewTransformerConfig("test", "")
 	cfg.OutputIDs = []string{"test-output"}
-	_, err := cfg.Build(testutil.Logger(t))
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "missing required `type` field.")
+	set := componenttest.NewNopTelemetrySettings()
+	_, err := cfg.Build(set)
+	require.ErrorContains(t, err, "missing required `type` field.")
 }
 
 func TestTransformerConfigMissingOutput(t *testing.T) {
 	cfg := NewTransformerConfig("test", "test")
-	_, err := cfg.Build(testutil.Logger(t))
+	set := componenttest.NewNopTelemetrySettings()
+	_, err := cfg.Build(set)
 	require.NoError(t, err)
 }
 
 func TestTransformerConfigValid(t *testing.T) {
 	cfg := NewTransformerConfig("test", "test")
 	cfg.OutputIDs = []string{"test-output"}
-	_, err := cfg.Build(testutil.Logger(t))
+	set := componenttest.NewNopTelemetrySettings()
+	_, err := cfg.Build(set)
 	require.NoError(t, err)
 }
 
 func TestTransformerOnErrorDefault(t *testing.T) {
 	cfg := NewTransformerConfig("test-id", "test-type")
-	transformer, err := cfg.Build(testutil.Logger(t))
+	set := componenttest.NewNopTelemetrySettings()
+	transformer, err := cfg.Build(set)
 	require.NoError(t, err)
 	require.Equal(t, SendOnError, transformer.OnError)
 }
@@ -50,14 +57,15 @@ func TestTransformerOnErrorDefault(t *testing.T) {
 func TestTransformerOnErrorInvalid(t *testing.T) {
 	cfg := NewTransformerConfig("test", "test")
 	cfg.OnError = "invalid"
-	_, err := cfg.Build(testutil.Logger(t))
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "operator config has an invalid `on_error` field.")
+	set := componenttest.NewNopTelemetrySettings()
+	_, err := cfg.Build(set)
+	require.ErrorContains(t, err, "operator config has an invalid `on_error` field.")
 }
 
 func TestTransformerOperatorCanProcess(t *testing.T) {
 	cfg := NewTransformerConfig("test", "test")
-	transformer, err := cfg.Build(testutil.Logger(t))
+	set := componenttest.NewNopTelemetrySettings()
+	transformer, err := cfg.Build(set)
 	require.NoError(t, err)
 	require.True(t, transformer.CanProcess())
 }
@@ -68,15 +76,16 @@ func TestTransformerDropOnError(t *testing.T) {
 	output.On("Process", mock.Anything, mock.Anything).Return(nil)
 
 	obs, logs := observer.New(zap.WarnLevel)
-	logger := zap.New(obs)
+	set := componenttest.NewNopTelemetrySettings()
+	set.Logger = zap.New(obs)
 
 	transformer := TransformerOperator{
 		OnError: DropOnError,
 		WriterOperator: WriterOperator{
 			BasicOperator: BasicOperator{
-				OperatorID:    "test-id",
-				OperatorType:  "test-type",
-				SugaredLogger: logger.Sugar(),
+				OperatorID:   "test-id",
+				OperatorType: "test-type",
+				set:          set,
 			},
 			OutputOperators: []operator.Operator{output},
 			OutputIDs:       []string{"test-output"},
@@ -84,8 +93,11 @@ func TestTransformerDropOnError(t *testing.T) {
 	}
 	ctx := context.Background()
 	testEntry := entry.New()
+	now := time.Now()
+	testEntry.Timestamp = now
+	testEntry.AddAttribute(attrs.LogFilePath, "/test/file")
 	transform := func(_ *entry.Entry) error {
-		return fmt.Errorf("Failure")
+		return errors.New("failure")
 	}
 
 	err := transformer.ProcessWith(ctx, testEntry, transform)
@@ -97,13 +109,15 @@ func TestTransformerDropOnError(t *testing.T) {
 		{
 			Entry: zapcore.Entry{Level: zap.ErrorLevel, Message: "Failed to process entry"},
 			Context: []zapcore.Field{
-				{Key: "error", Type: 26, Interface: fmt.Errorf("Failure")},
-				zap.Any("action", "drop"),
+				zap.Error(errors.New("failure")),
+				zap.String("action", "drop"),
+				zap.Time("entry.timestamp", now),
+				zap.String(attrs.LogFilePath, "/test/file"),
 			},
 		},
 	}
 	require.Equal(t, 1, logs.Len())
-	require.Equalf(t, expectedLogs, logs.AllUntimed(), "expected logs do not match")
+	require.Equal(t, expectedLogs, logs.AllUntimed())
 }
 
 func TestTransformerDropOnErrorQuiet(t *testing.T) {
@@ -112,15 +126,16 @@ func TestTransformerDropOnErrorQuiet(t *testing.T) {
 	output.On("Process", mock.Anything, mock.Anything).Return(nil)
 
 	obs, logs := observer.New(zap.DebugLevel)
-	logger := zap.New(obs)
+	set := componenttest.NewNopTelemetrySettings()
+	set.Logger = zap.New(obs)
 
 	transformer := TransformerOperator{
 		OnError: DropOnErrorQuiet,
 		WriterOperator: WriterOperator{
 			BasicOperator: BasicOperator{
-				OperatorID:    "test-id",
-				OperatorType:  "test-type",
-				SugaredLogger: logger.Sugar(),
+				OperatorID:   "test-id",
+				OperatorType: "test-type",
+				set:          set,
 			},
 			OutputOperators: []operator.Operator{output},
 			OutputIDs:       []string{"test-output"},
@@ -128,8 +143,11 @@ func TestTransformerDropOnErrorQuiet(t *testing.T) {
 	}
 	ctx := context.Background()
 	testEntry := entry.New()
+	now := time.Now()
+	testEntry.Timestamp = now
+	testEntry.AddAttribute(attrs.LogFilePath, "/test/file")
 	transform := func(_ *entry.Entry) error {
-		return fmt.Errorf("Failure")
+		return errors.New("Failure")
 	}
 
 	err := transformer.ProcessWith(ctx, testEntry, transform)
@@ -141,8 +159,10 @@ func TestTransformerDropOnErrorQuiet(t *testing.T) {
 		{
 			Entry: zapcore.Entry{Level: zap.DebugLevel, Message: "Failed to process entry"},
 			Context: []zapcore.Field{
-				{Key: "error", Type: 26, Interface: fmt.Errorf("Failure")},
-				zap.Any("action", "drop_quiet"),
+				{Key: "error", Type: 26, Interface: errors.New("Failure")},
+				zap.String("action", "drop_quiet"),
+				zap.Time("entry.timestamp", now),
+				zap.String(attrs.LogFilePath, "/test/file"),
 			},
 		},
 	}
@@ -156,15 +176,16 @@ func TestTransformerSendOnError(t *testing.T) {
 	output.On("Process", mock.Anything, mock.Anything).Return(nil)
 
 	obs, logs := observer.New(zap.WarnLevel)
-	logger := zap.New(obs)
+	set := componenttest.NewNopTelemetrySettings()
+	set.Logger = zap.New(obs)
 
 	transformer := TransformerOperator{
 		OnError: SendOnError,
 		WriterOperator: WriterOperator{
 			BasicOperator: BasicOperator{
-				OperatorID:    "test-id",
-				OperatorType:  "test-type",
-				SugaredLogger: logger.Sugar(),
+				OperatorID:   "test-id",
+				OperatorType: "test-type",
+				set:          set,
 			},
 			OutputOperators: []operator.Operator{output},
 			OutputIDs:       []string{"test-output"},
@@ -172,8 +193,11 @@ func TestTransformerSendOnError(t *testing.T) {
 	}
 	ctx := context.Background()
 	testEntry := entry.New()
+	now := time.Now()
+	testEntry.Timestamp = now
+	testEntry.AddAttribute(attrs.LogFilePath, "/test/file")
 	transform := func(_ *entry.Entry) error {
-		return fmt.Errorf("Failure")
+		return errors.New("Failure")
 	}
 
 	err := transformer.ProcessWith(ctx, testEntry, transform)
@@ -185,8 +209,10 @@ func TestTransformerSendOnError(t *testing.T) {
 		{
 			Entry: zapcore.Entry{Level: zap.ErrorLevel, Message: "Failed to process entry"},
 			Context: []zapcore.Field{
-				{Key: "error", Type: 26, Interface: fmt.Errorf("Failure")},
-				zap.Any("action", "send"),
+				{Key: "error", Type: 26, Interface: errors.New("Failure")},
+				zap.String("action", "send"),
+				zap.Time("entry.timestamp", now),
+				zap.String(attrs.LogFilePath, "/test/file"),
 			},
 		},
 	}
@@ -200,15 +226,16 @@ func TestTransformerSendOnErrorQuiet(t *testing.T) {
 	output.On("Process", mock.Anything, mock.Anything).Return(nil)
 
 	obs, logs := observer.New(zap.DebugLevel)
-	logger := zap.New(obs)
+	set := componenttest.NewNopTelemetrySettings()
+	set.Logger = zap.New(obs)
 
 	transformer := TransformerOperator{
 		OnError: SendOnErrorQuiet,
 		WriterOperator: WriterOperator{
 			BasicOperator: BasicOperator{
-				OperatorID:    "test-id",
-				OperatorType:  "test-type",
-				SugaredLogger: logger.Sugar(),
+				OperatorID:   "test-id",
+				OperatorType: "test-type",
+				set:          set,
 			},
 			OutputOperators: []operator.Operator{output},
 			OutputIDs:       []string{"test-output"},
@@ -216,8 +243,11 @@ func TestTransformerSendOnErrorQuiet(t *testing.T) {
 	}
 	ctx := context.Background()
 	testEntry := entry.New()
+	now := time.Now()
+	testEntry.Timestamp = now
+	testEntry.AddAttribute(attrs.LogFilePath, "/test/file")
 	transform := func(_ *entry.Entry) error {
-		return fmt.Errorf("Failure")
+		return errors.New("Failure")
 	}
 
 	err := transformer.ProcessWith(ctx, testEntry, transform)
@@ -229,8 +259,10 @@ func TestTransformerSendOnErrorQuiet(t *testing.T) {
 		{
 			Entry: zapcore.Entry{Level: zap.DebugLevel, Message: "Failed to process entry"},
 			Context: []zapcore.Field{
-				{Key: "error", Type: 26, Interface: fmt.Errorf("Failure")},
-				zap.Any("action", "send_quiet"),
+				{Key: "error", Type: 26, Interface: errors.New("Failure")},
+				zap.String("action", "send_quiet"),
+				zap.Time("entry.timestamp", now),
+				zap.String(attrs.LogFilePath, "/test/file"),
 			},
 		},
 	}
@@ -242,13 +274,15 @@ func TestTransformerProcessWithValid(t *testing.T) {
 	output := &testutil.Operator{}
 	output.On("ID").Return("test-output")
 	output.On("Process", mock.Anything, mock.Anything).Return(nil)
+	set := componenttest.NewNopTelemetrySettings()
+	set.Logger = zaptest.NewLogger(t)
 	transformer := TransformerOperator{
 		OnError: SendOnError,
 		WriterOperator: WriterOperator{
 			BasicOperator: BasicOperator{
-				OperatorID:    "test-id",
-				OperatorType:  "test-type",
-				SugaredLogger: testutil.Logger(t),
+				OperatorID:   "test-id",
+				OperatorType: "test-type",
+				set:          set,
 			},
 			OutputOperators: []operator.Operator{output},
 			OutputIDs:       []string{"test-output"},
@@ -317,7 +351,8 @@ func TestTransformerIf(t *testing.T) {
 			cfg := NewTransformerConfig("test", "test")
 			cfg.IfExpr = tc.ifExpr
 
-			transformer, err := cfg.Build(testutil.Logger(t))
+			set := componenttest.NewNopTelemetrySettings()
+			transformer, err := cfg.Build(set)
 			require.NoError(t, err)
 
 			fake := testutil.NewFakeOutput(t)
@@ -342,7 +377,8 @@ func TestTransformerIf(t *testing.T) {
 	t.Run("InvalidIfExpr", func(t *testing.T) {
 		cfg := NewTransformerConfig("test", "test")
 		cfg.IfExpr = "'nonbool'"
-		_, err := cfg.Build(testutil.Logger(t))
+		set := componenttest.NewNopTelemetrySettings()
+		_, err := cfg.Build(set)
 		require.Error(t, err)
 	})
 }

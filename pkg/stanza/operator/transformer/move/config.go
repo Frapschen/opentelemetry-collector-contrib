@@ -4,9 +4,9 @@
 package move // import "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator/transformer/move"
 
 import (
-	"fmt"
+	"errors"
 
-	"go.uber.org/zap"
+	"go.opentelemetry.io/collector/component"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/entry"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator"
@@ -39,14 +39,14 @@ type Config struct {
 }
 
 // Build will build a Move operator from the supplied configuration
-func (c Config) Build(logger *zap.SugaredLogger) (operator.Operator, error) {
-	transformerOperator, err := c.TransformerConfig.Build(logger)
+func (c Config) Build(set component.TelemetrySettings) (operator.Operator, error) {
+	transformerOperator, err := c.TransformerConfig.Build(set)
 	if err != nil {
 		return nil, err
 	}
 
 	if c.To == entry.NewNilField() || c.From == entry.NewNilField() {
-		return nil, fmt.Errorf("move: missing to or from field")
+		return nil, errors.New("move: missing to or from field")
 	}
 
 	return &Transformer{

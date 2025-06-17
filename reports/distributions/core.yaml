@@ -25,3 +25,15 @@ components:
         - opencensus
         - prometheus
         - zipkin
+    scraper:
+        - cpu
+        - disk
+        - filesystem
+        - load
+        - memory
+        - network
+        - nfs
+        - paging
+        - process
+        - processes
+        - system

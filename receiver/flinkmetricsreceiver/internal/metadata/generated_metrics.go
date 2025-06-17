@@ -14,7 +14,7 @@ import (
 	"go.opentelemetry.io/collector/receiver"
 )
 
-// AttributeCheckpoint specifies the a value checkpoint attribute.
+// AttributeCheckpoint specifies the value checkpoint attribute.
 type AttributeCheckpoint int
 
 const (
@@ -40,7 +40,7 @@ var MapAttributeCheckpoint = map[string]AttributeCheckpoint{
 	"failed":    AttributeCheckpointFailed,
 }
 
-// AttributeGarbageCollectorName specifies the a value garbage_collector_name attribute.
+// AttributeGarbageCollectorName specifies the value garbage_collector_name attribute.
 type AttributeGarbageCollectorName int
 
 const (
@@ -74,7 +74,7 @@ var MapAttributeGarbageCollectorName = map[string]AttributeGarbageCollectorName{
 	"G1_Old_Generation":   AttributeGarbageCollectorNameG1OldGeneration,
 }
 
-// AttributeRecord specifies the a value record attribute.
+// AttributeRecord specifies the value record attribute.
 type AttributeRecord int
 
 const (
@@ -102,6 +102,132 @@ var MapAttributeRecord = map[string]AttributeRecord{
 	"in":      AttributeRecordIn,
 	"out":     AttributeRecordOut,
 	"dropped": AttributeRecordDropped,
+}
+
+var MetricsInfo = metricsInfo{
+	FlinkJobCheckpointCount: metricInfo{
+		Name: "flink.job.checkpoint.count",
+	},
+	FlinkJobCheckpointInProgress: metricInfo{
+		Name: "flink.job.checkpoint.in_progress",
+	},
+	FlinkJobLastCheckpointSize: metricInfo{
+		Name: "flink.job.last_checkpoint.size",
+	},
+	FlinkJobLastCheckpointTime: metricInfo{
+		Name: "flink.job.last_checkpoint.time",
+	},
+	FlinkJobRestartCount: metricInfo{
+		Name: "flink.job.restart.count",
+	},
+	FlinkJvmClassLoaderClassesLoaded: metricInfo{
+		Name: "flink.jvm.class_loader.classes_loaded",
+	},
+	FlinkJvmCPULoad: metricInfo{
+		Name: "flink.jvm.cpu.load",
+	},
+	FlinkJvmCPUTime: metricInfo{
+		Name: "flink.jvm.cpu.time",
+	},
+	FlinkJvmGcCollectionsCount: metricInfo{
+		Name: "flink.jvm.gc.collections.count",
+	},
+	FlinkJvmGcCollectionsTime: metricInfo{
+		Name: "flink.jvm.gc.collections.time",
+	},
+	FlinkJvmMemoryDirectTotalCapacity: metricInfo{
+		Name: "flink.jvm.memory.direct.total_capacity",
+	},
+	FlinkJvmMemoryDirectUsed: metricInfo{
+		Name: "flink.jvm.memory.direct.used",
+	},
+	FlinkJvmMemoryHeapCommitted: metricInfo{
+		Name: "flink.jvm.memory.heap.committed",
+	},
+	FlinkJvmMemoryHeapMax: metricInfo{
+		Name: "flink.jvm.memory.heap.max",
+	},
+	FlinkJvmMemoryHeapUsed: metricInfo{
+		Name: "flink.jvm.memory.heap.used",
+	},
+	FlinkJvmMemoryMappedTotalCapacity: metricInfo{
+		Name: "flink.jvm.memory.mapped.total_capacity",
+	},
+	FlinkJvmMemoryMappedUsed: metricInfo{
+		Name: "flink.jvm.memory.mapped.used",
+	},
+	FlinkJvmMemoryMetaspaceCommitted: metricInfo{
+		Name: "flink.jvm.memory.metaspace.committed",
+	},
+	FlinkJvmMemoryMetaspaceMax: metricInfo{
+		Name: "flink.jvm.memory.metaspace.max",
+	},
+	FlinkJvmMemoryMetaspaceUsed: metricInfo{
+		Name: "flink.jvm.memory.metaspace.used",
+	},
+	FlinkJvmMemoryNonheapCommitted: metricInfo{
+		Name: "flink.jvm.memory.nonheap.committed",
+	},
+	FlinkJvmMemoryNonheapMax: metricInfo{
+		Name: "flink.jvm.memory.nonheap.max",
+	},
+	FlinkJvmMemoryNonheapUsed: metricInfo{
+		Name: "flink.jvm.memory.nonheap.used",
+	},
+	FlinkJvmThreadsCount: metricInfo{
+		Name: "flink.jvm.threads.count",
+	},
+	FlinkMemoryManagedTotal: metricInfo{
+		Name: "flink.memory.managed.total",
+	},
+	FlinkMemoryManagedUsed: metricInfo{
+		Name: "flink.memory.managed.used",
+	},
+	FlinkOperatorRecordCount: metricInfo{
+		Name: "flink.operator.record.count",
+	},
+	FlinkOperatorWatermarkOutput: metricInfo{
+		Name: "flink.operator.watermark.output",
+	},
+	FlinkTaskRecordCount: metricInfo{
+		Name: "flink.task.record.count",
+	},
+}
+
+type metricsInfo struct {
+	FlinkJobCheckpointCount           metricInfo
+	FlinkJobCheckpointInProgress      metricInfo
+	FlinkJobLastCheckpointSize        metricInfo
+	FlinkJobLastCheckpointTime        metricInfo
+	FlinkJobRestartCount              metricInfo
+	FlinkJvmClassLoaderClassesLoaded  metricInfo
+	FlinkJvmCPULoad                   metricInfo
+	FlinkJvmCPUTime                   metricInfo
+	FlinkJvmGcCollectionsCount        metricInfo
+	FlinkJvmGcCollectionsTime         metricInfo
+	FlinkJvmMemoryDirectTotalCapacity metricInfo
+	FlinkJvmMemoryDirectUsed          metricInfo
+	FlinkJvmMemoryHeapCommitted       metricInfo
+	FlinkJvmMemoryHeapMax             metricInfo
+	FlinkJvmMemoryHeapUsed            metricInfo
+	FlinkJvmMemoryMappedTotalCapacity metricInfo
+	FlinkJvmMemoryMappedUsed          metricInfo
+	FlinkJvmMemoryMetaspaceCommitted  metricInfo
+	FlinkJvmMemoryMetaspaceMax        metricInfo
+	FlinkJvmMemoryMetaspaceUsed       metricInfo
+	FlinkJvmMemoryNonheapCommitted    metricInfo
+	FlinkJvmMemoryNonheapMax          metricInfo
+	FlinkJvmMemoryNonheapUsed         metricInfo
+	FlinkJvmThreadsCount              metricInfo
+	FlinkMemoryManagedTotal           metricInfo
+	FlinkMemoryManagedUsed            metricInfo
+	FlinkOperatorRecordCount          metricInfo
+	FlinkOperatorWatermarkOutput      metricInfo
+	FlinkTaskRecordCount              metricInfo
+}
+
+type metricInfo struct {
+	Name string
 }
 
 type metricFlinkJobCheckpointCount struct {
@@ -1633,17 +1759,24 @@ type MetricsBuilder struct {
 	metricFlinkTaskRecordCount              metricFlinkTaskRecordCount
 }
 
-// metricBuilderOption applies changes to default metrics builder.
-type metricBuilderOption func(*MetricsBuilder)
-
-// WithStartTime sets startTime on the metrics builder.
-func WithStartTime(startTime pcommon.Timestamp) metricBuilderOption {
-	return func(mb *MetricsBuilder) {
-		mb.startTime = startTime
-	}
+// MetricBuilderOption applies changes to default metrics builder.
+type MetricBuilderOption interface {
+	apply(*MetricsBuilder)
 }
 
-func NewMetricsBuilder(mbc MetricsBuilderConfig, settings receiver.CreateSettings, options ...metricBuilderOption) *MetricsBuilder {
+type metricBuilderOptionFunc func(mb *MetricsBuilder)
+
+func (mbof metricBuilderOptionFunc) apply(mb *MetricsBuilder) {
+	mbof(mb)
+}
+
+// WithStartTime sets startTime on the metrics builder.
+func WithStartTime(startTime pcommon.Timestamp) MetricBuilderOption {
+	return metricBuilderOptionFunc(func(mb *MetricsBuilder) {
+		mb.startTime = startTime
+	})
+}
+func NewMetricsBuilder(mbc MetricsBuilderConfig, settings receiver.Settings, options ...MetricBuilderOption) *MetricsBuilder {
 	mb := &MetricsBuilder{
 		config:                                  mbc,
 		startTime:                               pcommon.NewTimestampFromTime(time.Now()),
@@ -1681,45 +1814,45 @@ func NewMetricsBuilder(mbc MetricsBuilderConfig, settings receiver.CreateSetting
 		resourceAttributeIncludeFilter:          make(map[string]filter.Filter),
 		resourceAttributeExcludeFilter:          make(map[string]filter.Filter),
 	}
-	if mbc.ResourceAttributes.FlinkJobName.Include != nil {
-		mb.resourceAttributeIncludeFilter["flink.job.name"] = filter.CreateFilter(mbc.ResourceAttributes.FlinkJobName.Include)
+	if mbc.ResourceAttributes.FlinkJobName.MetricsInclude != nil {
+		mb.resourceAttributeIncludeFilter["flink.job.name"] = filter.CreateFilter(mbc.ResourceAttributes.FlinkJobName.MetricsInclude)
 	}
-	if mbc.ResourceAttributes.FlinkJobName.Exclude != nil {
-		mb.resourceAttributeExcludeFilter["flink.job.name"] = filter.CreateFilter(mbc.ResourceAttributes.FlinkJobName.Exclude)
+	if mbc.ResourceAttributes.FlinkJobName.MetricsExclude != nil {
+		mb.resourceAttributeExcludeFilter["flink.job.name"] = filter.CreateFilter(mbc.ResourceAttributes.FlinkJobName.MetricsExclude)
 	}
-	if mbc.ResourceAttributes.FlinkResourceType.Include != nil {
-		mb.resourceAttributeIncludeFilter["flink.resource.type"] = filter.CreateFilter(mbc.ResourceAttributes.FlinkResourceType.Include)
+	if mbc.ResourceAttributes.FlinkResourceType.MetricsInclude != nil {
+		mb.resourceAttributeIncludeFilter["flink.resource.type"] = filter.CreateFilter(mbc.ResourceAttributes.FlinkResourceType.MetricsInclude)
 	}
-	if mbc.ResourceAttributes.FlinkResourceType.Exclude != nil {
-		mb.resourceAttributeExcludeFilter["flink.resource.type"] = filter.CreateFilter(mbc.ResourceAttributes.FlinkResourceType.Exclude)
+	if mbc.ResourceAttributes.FlinkResourceType.MetricsExclude != nil {
+		mb.resourceAttributeExcludeFilter["flink.resource.type"] = filter.CreateFilter(mbc.ResourceAttributes.FlinkResourceType.MetricsExclude)
 	}
-	if mbc.ResourceAttributes.FlinkSubtaskIndex.Include != nil {
-		mb.resourceAttributeIncludeFilter["flink.subtask.index"] = filter.CreateFilter(mbc.ResourceAttributes.FlinkSubtaskIndex.Include)
+	if mbc.ResourceAttributes.FlinkSubtaskIndex.MetricsInclude != nil {
+		mb.resourceAttributeIncludeFilter["flink.subtask.index"] = filter.CreateFilter(mbc.ResourceAttributes.FlinkSubtaskIndex.MetricsInclude)
 	}
-	if mbc.ResourceAttributes.FlinkSubtaskIndex.Exclude != nil {
-		mb.resourceAttributeExcludeFilter["flink.subtask.index"] = filter.CreateFilter(mbc.ResourceAttributes.FlinkSubtaskIndex.Exclude)
+	if mbc.ResourceAttributes.FlinkSubtaskIndex.MetricsExclude != nil {
+		mb.resourceAttributeExcludeFilter["flink.subtask.index"] = filter.CreateFilter(mbc.ResourceAttributes.FlinkSubtaskIndex.MetricsExclude)
 	}
-	if mbc.ResourceAttributes.FlinkTaskName.Include != nil {
-		mb.resourceAttributeIncludeFilter["flink.task.name"] = filter.CreateFilter(mbc.ResourceAttributes.FlinkTaskName.Include)
+	if mbc.ResourceAttributes.FlinkTaskName.MetricsInclude != nil {
+		mb.resourceAttributeIncludeFilter["flink.task.name"] = filter.CreateFilter(mbc.ResourceAttributes.FlinkTaskName.MetricsInclude)
 	}
-	if mbc.ResourceAttributes.FlinkTaskName.Exclude != nil {
-		mb.resourceAttributeExcludeFilter["flink.task.name"] = filter.CreateFilter(mbc.ResourceAttributes.FlinkTaskName.Exclude)
+	if mbc.ResourceAttributes.FlinkTaskName.MetricsExclude != nil {
+		mb.resourceAttributeExcludeFilter["flink.task.name"] = filter.CreateFilter(mbc.ResourceAttributes.FlinkTaskName.MetricsExclude)
 	}
-	if mbc.ResourceAttributes.FlinkTaskmanagerID.Include != nil {
-		mb.resourceAttributeIncludeFilter["flink.taskmanager.id"] = filter.CreateFilter(mbc.ResourceAttributes.FlinkTaskmanagerID.Include)
+	if mbc.ResourceAttributes.FlinkTaskmanagerID.MetricsInclude != nil {
+		mb.resourceAttributeIncludeFilter["flink.taskmanager.id"] = filter.CreateFilter(mbc.ResourceAttributes.FlinkTaskmanagerID.MetricsInclude)
 	}
-	if mbc.ResourceAttributes.FlinkTaskmanagerID.Exclude != nil {
-		mb.resourceAttributeExcludeFilter["flink.taskmanager.id"] = filter.CreateFilter(mbc.ResourceAttributes.FlinkTaskmanagerID.Exclude)
+	if mbc.ResourceAttributes.FlinkTaskmanagerID.MetricsExclude != nil {
+		mb.resourceAttributeExcludeFilter["flink.taskmanager.id"] = filter.CreateFilter(mbc.ResourceAttributes.FlinkTaskmanagerID.MetricsExclude)
 	}
-	if mbc.ResourceAttributes.HostName.Include != nil {
-		mb.resourceAttributeIncludeFilter["host.name"] = filter.CreateFilter(mbc.ResourceAttributes.HostName.Include)
+	if mbc.ResourceAttributes.HostName.MetricsInclude != nil {
+		mb.resourceAttributeIncludeFilter["host.name"] = filter.CreateFilter(mbc.ResourceAttributes.HostName.MetricsInclude)
 	}
-	if mbc.ResourceAttributes.HostName.Exclude != nil {
-		mb.resourceAttributeExcludeFilter["host.name"] = filter.CreateFilter(mbc.ResourceAttributes.HostName.Exclude)
+	if mbc.ResourceAttributes.HostName.MetricsExclude != nil {
+		mb.resourceAttributeExcludeFilter["host.name"] = filter.CreateFilter(mbc.ResourceAttributes.HostName.MetricsExclude)
 	}
 
 	for _, op := range options {
-		op(mb)
+		op.apply(mb)
 	}
 	return mb
 }
@@ -1737,20 +1870,28 @@ func (mb *MetricsBuilder) updateCapacity(rm pmetric.ResourceMetrics) {
 }
 
 // ResourceMetricsOption applies changes to provided resource metrics.
-type ResourceMetricsOption func(pmetric.ResourceMetrics)
+type ResourceMetricsOption interface {
+	apply(pmetric.ResourceMetrics)
+}
+
+type resourceMetricsOptionFunc func(pmetric.ResourceMetrics)
+
+func (rmof resourceMetricsOptionFunc) apply(rm pmetric.ResourceMetrics) {
+	rmof(rm)
+}
 
 // WithResource sets the provided resource on the emitted ResourceMetrics.
 // It's recommended to use ResourceBuilder to create the resource.
 func WithResource(res pcommon.Resource) ResourceMetricsOption {
-	return func(rm pmetric.ResourceMetrics) {
+	return resourceMetricsOptionFunc(func(rm pmetric.ResourceMetrics) {
 		res.CopyTo(rm.Resource())
-	}
+	})
 }
 
 // WithStartTimeOverride overrides start time for all the resource metrics data points.
 // This option should be only used if different start time has to be set on metrics coming from different resources.
 func WithStartTimeOverride(start pcommon.Timestamp) ResourceMetricsOption {
-	return func(rm pmetric.ResourceMetrics) {
+	return resourceMetricsOptionFunc(func(rm pmetric.ResourceMetrics) {
 		var dps pmetric.NumberDataPointSlice
 		metrics := rm.ScopeMetrics().At(0).Metrics()
 		for i := 0; i < metrics.Len(); i++ {
@@ -1764,7 +1905,7 @@ func WithStartTimeOverride(start pcommon.Timestamp) ResourceMetricsOption {
 				dps.At(j).SetStartTimestamp(start)
 			}
 		}
-	}
+	})
 }
 
 // EmitForResource saves all the generated metrics under a new resource and updates the internal state to be ready for
@@ -1772,10 +1913,10 @@ func WithStartTimeOverride(start pcommon.Timestamp) ResourceMetricsOption {
 // needs to emit metrics from several resources. Otherwise calling this function is not required,
 // just `Emit` function can be called instead.
 // Resource attributes should be provided as ResourceMetricsOption arguments.
-func (mb *MetricsBuilder) EmitForResource(rmo ...ResourceMetricsOption) {
+func (mb *MetricsBuilder) EmitForResource(options ...ResourceMetricsOption) {
 	rm := pmetric.NewResourceMetrics()
 	ils := rm.ScopeMetrics().AppendEmpty()
-	ils.Scope().SetName("otelcol/flinkmetricsreceiver")
+	ils.Scope().SetName(ScopeName)
 	ils.Scope().SetVersion(mb.buildInfo.Version)
 	ils.Metrics().EnsureCapacity(mb.metricsCapacity)
 	mb.metricFlinkJobCheckpointCount.emit(ils.Metrics())
@@ -1808,8 +1949,8 @@ func (mb *MetricsBuilder) EmitForResource(rmo ...ResourceMetricsOption) {
 	mb.metricFlinkOperatorWatermarkOutput.emit(ils.Metrics())
 	mb.metricFlinkTaskRecordCount.emit(ils.Metrics())
 
-	for _, op := range rmo {
-		op(rm)
+	for _, op := range options {
+		op.apply(rm)
 	}
 	for attr, filter := range mb.resourceAttributeIncludeFilter {
 		if val, ok := rm.Resource().Attributes().Get(attr); ok && !filter.Matches(val.AsString()) {
@@ -1831,8 +1972,8 @@ func (mb *MetricsBuilder) EmitForResource(rmo ...ResourceMetricsOption) {
 // Emit returns all the metrics accumulated by the metrics builder and updates the internal state to be ready for
 // recording another set of metrics. This function will be responsible for applying all the transformations required to
 // produce metric representation defined in metadata and user config, e.g. delta or cumulative.
-func (mb *MetricsBuilder) Emit(rmo ...ResourceMetricsOption) pmetric.Metrics {
-	mb.EmitForResource(rmo...)
+func (mb *MetricsBuilder) Emit(options ...ResourceMetricsOption) pmetric.Metrics {
+	mb.EmitForResource(options...)
 	metrics := mb.metricsBuffer
 	mb.metricsBuffer = pmetric.NewMetrics()
 	return metrics
@@ -2130,9 +2271,9 @@ func (mb *MetricsBuilder) RecordFlinkTaskRecordCountDataPoint(ts pcommon.Timesta
 
 // Reset resets metrics builder to its initial state. It should be used when external metrics source is restarted,
 // and metrics builder should update its startTime and reset it's internal state accordingly.
-func (mb *MetricsBuilder) Reset(options ...metricBuilderOption) {
+func (mb *MetricsBuilder) Reset(options ...MetricBuilderOption) {
 	mb.startTime = pcommon.NewTimestampFromTime(time.Now())
 	for _, op := range options {
-		op(mb)
+		op.apply(mb)
 	}
 }

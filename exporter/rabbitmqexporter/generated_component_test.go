@@ -19,8 +19,10 @@ import (
 	"go.opentelemetry.io/collector/pdata/ptrace"
 )
 
+var typ = component.MustNewType("rabbitmq")
+
 func TestComponentFactoryType(t *testing.T) {
-	require.Equal(t, "rabbitmq", NewFactory().Type().String())
+	require.Equal(t, typ, NewFactory().Type())
 }
 
 func TestComponentConfigStruct(t *testing.T) {
@@ -31,28 +33,28 @@ func TestComponentLifecycle(t *testing.T) {
 	factory := NewFactory()
 
 	tests := []struct {
+		createFn func(ctx context.Context, set exporter.Settings, cfg component.Config) (component.Component, error)
 		name     string
-		createFn func(ctx context.Context, set exporter.CreateSettings, cfg component.Config) (component.Component, error)
 	}{
 
 		{
 			name: "logs",
-			createFn: func(ctx context.Context, set exporter.CreateSettings, cfg component.Config) (component.Component, error) {
-				return factory.CreateLogsExporter(ctx, set, cfg)
+			createFn: func(ctx context.Context, set exporter.Settings, cfg component.Config) (component.Component, error) {
+				return factory.CreateLogs(ctx, set, cfg)
 			},
 		},
 
 		{
 			name: "metrics",
-			createFn: func(ctx context.Context, set exporter.CreateSettings, cfg component.Config) (component.Component, error) {
-				return factory.CreateMetricsExporter(ctx, set, cfg)
+			createFn: func(ctx context.Context, set exporter.Settings, cfg component.Config) (component.Component, error) {
+				return factory.CreateMetrics(ctx, set, cfg)
 			},
 		},
 
 		{
 			name: "traces",
-			createFn: func(ctx context.Context, set exporter.CreateSettings, cfg component.Config) (component.Component, error) {
-				return factory.CreateTracesExporter(ctx, set, cfg)
+			createFn: func(ctx context.Context, set exporter.Settings, cfg component.Config) (component.Component, error) {
+				return factory.CreateTraces(ctx, set, cfg)
 			},
 		},
 	}
@@ -62,11 +64,11 @@ func TestComponentLifecycle(t *testing.T) {
 	cfg := factory.CreateDefaultConfig()
 	sub, err := cm.Sub("tests::config")
 	require.NoError(t, err)
-	require.NoError(t, component.UnmarshalConfig(sub, cfg))
+	require.NoError(t, sub.Unmarshal(&cfg))
 
-	for _, test := range tests {
-		t.Run(test.name+"-shutdown", func(t *testing.T) {
-			c, err := test.createFn(context.Background(), exportertest.NewNopCreateSettings(), cfg)
+	for _, tt := range tests {
+		t.Run(tt.name+"-shutdown", func(t *testing.T) {
+			c, err := tt.createFn(context.Background(), exportertest.NewNopSettings(typ), cfg)
 			require.NoError(t, err)
 			err = c.Shutdown(context.Background())
 			require.NoError(t, err)

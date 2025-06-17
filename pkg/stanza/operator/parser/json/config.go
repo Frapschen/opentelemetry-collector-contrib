@@ -4,8 +4,7 @@
 package json // import "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator/parser/json"
 
 import (
-	jsoniter "github.com/json-iterator/go"
-	"go.uber.org/zap"
+	"go.opentelemetry.io/collector/component"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator/helper"
@@ -32,17 +31,19 @@ func NewConfigWithID(operatorID string) *Config {
 // Config is the configuration of a JSON parser operator.
 type Config struct {
 	helper.ParserConfig `mapstructure:",squash"`
+
+	ParseInts bool `mapstructure:"parse_ints"`
 }
 
 // Build will build a JSON parser operator.
-func (c Config) Build(logger *zap.SugaredLogger) (operator.Operator, error) {
-	parserOperator, err := c.ParserConfig.Build(logger)
+func (c Config) Build(set component.TelemetrySettings) (operator.Operator, error) {
+	parserOperator, err := c.ParserConfig.Build(set)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Parser{
 		ParserOperator: parserOperator,
-		json:           jsoniter.ConfigFastest,
+		parseInts:      c.ParseInts,
 	}, nil
 }

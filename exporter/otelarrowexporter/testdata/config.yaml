@@ -7,6 +7,10 @@ sending_queue:
   enabled: true
   num_consumers: 2
   queue_size: 10
+  batch:
+    flush_timeout: 200ms
+    min_size: 1000
+    max_size: 10000
 retry_on_failure:
   enabled: true
   initial_interval: 10s
@@ -18,7 +22,7 @@ auth:
   authenticator: nop
 headers:
   "can you have a . here?": "F0000000-0000-0000-0000-000000000000"
-  header1: 234
+  header1: "234"
   another: "somevalue"
 keepalive:
   time: 20s
@@ -30,3 +34,4 @@ arrow:
   disabled: false
   max_stream_lifetime: 2h
   payload_compression: "zstd"
+  prioritizer: leastloaded8

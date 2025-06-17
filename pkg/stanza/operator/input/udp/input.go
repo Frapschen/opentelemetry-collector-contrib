@@ -15,7 +15,7 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/text/encoding"
 
-	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/decode"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/coreinternal/textutils"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator/helper"
 )
@@ -86,7 +86,7 @@ func (i *Input) goHandleMessages(ctx context.Context) {
 func (i *Input) readAndProcessMessages(ctx context.Context) {
 	defer i.wg.Done()
 
-	dec := decode.New(i.encoding)
+	dec := i.encoding.NewDecoder()
 	readBuffer := make([]byte, MaxUDPSize)
 	scannerBuffer := make([]byte, 0, MaxUDPSize)
 	for {
@@ -98,7 +98,7 @@ func (i *Input) readAndProcessMessages(ctx context.Context) {
 			case <-ctx.Done():
 				return
 			default:
-				i.Errorw("Failed reading messages", zap.Error(err))
+				i.Logger().Error("Failed reading messages", zap.Error(err))
 			}
 			break
 		}
@@ -107,7 +107,7 @@ func (i *Input) readAndProcessMessages(ctx context.Context) {
 	}
 }
 
-func (i *Input) processMessage(ctx context.Context, message []byte, remoteAddr net.Addr, dec *decode.Decoder, scannerBuffer []byte) {
+func (i *Input) processMessage(ctx context.Context, message []byte, remoteAddr net.Addr, dec *encoding.Decoder, scannerBuffer []byte) {
 	if i.OneLogPerPacket {
 		log := truncateMaxLog(message)
 		i.handleMessage(ctx, remoteAddr, dec, log)
@@ -123,7 +123,7 @@ func (i *Input) processMessage(ctx context.Context, message []byte, remoteAddr n
 		i.handleMessage(ctx, remoteAddr, dec, scanner.Bytes())
 	}
 	if err := scanner.Err(); err != nil {
-		i.Errorw("Scanner error", zap.Error(err))
+		i.Logger().Error("Scanner error", zap.Error(err))
 	}
 }
 
@@ -139,7 +139,7 @@ func (i *Input) readMessagesAsync(ctx context.Context) {
 			case <-ctx.Done():
 				return
 			default:
-				i.Errorw("Failed reading messages", zap.Error(err))
+				i.Logger().Error("Failed reading messages", zap.Error(err))
 			}
 			break
 		}
@@ -158,7 +158,7 @@ func (i *Input) readMessagesAsync(ctx context.Context) {
 func (i *Input) processMessagesAsync(ctx context.Context) {
 	defer i.wg.Done()
 
-	dec := decode.New(i.encoding)
+	dec := i.encoding.NewDecoder()
 	scannerBuffer := make([]byte, 0, MaxUDPSize)
 
 	for {
@@ -186,20 +186,16 @@ func truncateMaxLog(data []byte) (token []byte) {
 	return data
 }
 
-func (i *Input) handleMessage(ctx context.Context, remoteAddr net.Addr, dec *decode.Decoder, log []byte) {
-	decoded := log
-	if i.encoding != encoding.Nop {
-		var err error
-		decoded, err = dec.Decode(log)
-		if err != nil {
-			i.Errorw("Failed to decode data", zap.Error(err))
-			return
-		}
+func (i *Input) handleMessage(ctx context.Context, remoteAddr net.Addr, dec *encoding.Decoder, log []byte) {
+	decoded, err := textutils.DecodeAsString(dec, log)
+	if err != nil {
+		i.Logger().Error("Failed to decode data", zap.Error(err))
+		return
 	}
 
-	entry, err := i.NewEntry(string(decoded))
+	entry, err := i.NewEntry(decoded)
 	if err != nil {
-		i.Errorw("Failed to create entry", zap.Error(err))
+		i.Logger().Error("Failed to create entry", zap.Error(err))
 		return
 	}
 
@@ -220,7 +216,10 @@ func (i *Input) handleMessage(ctx context.Context, remoteAddr net.Addr, dec *dec
 		}
 	}
 
-	i.Write(ctx, entry)
+	err = i.Write(ctx, entry)
+	if err != nil {
+		i.Logger().Error("Failed to write entry", zap.Error(err))
+	}
 }
 
 // readMessage will read log messages from the connection.
@@ -236,7 +235,7 @@ func (i *Input) readMessage(buffer []byte) ([]byte, net.Addr, int, error) {
 // This will remove trailing characters and NULs from the buffer
 func (i *Input) removeTrailingCharactersAndNULsFromBuffer(buffer []byte, n int) []byte {
 	// Remove trailing characters and NULs
-	for ; (n > 0) && (buffer[n-1] < 32); n-- { // nolint
+	for ; (n > 0) && (buffer[n-1] < 32); n-- { //nolint:revive
 	}
 
 	return buffer[:n]
@@ -251,7 +250,7 @@ func (i *Input) Stop() error {
 		i.cancel()
 		if i.connection != nil {
 			if err := i.connection.Close(); err != nil {
-				i.Errorf("failed to close UDP connection: %s", err)
+				i.Logger().Error("failed to close UDP connection", zap.Error(err))
 			}
 		}
 		if i.AsyncConfig != nil {

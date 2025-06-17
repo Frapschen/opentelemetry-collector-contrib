@@ -1,5 +1,4 @@
 type: couchdb
-scope_name: otelcol/couchdbreceiver
 
 status:
   class: receiver
@@ -7,7 +6,8 @@ status:
     beta: [metrics]
   distributions: [contrib]
   codeowners:
-    active: [djaglowski]
+    active: [antonblock]
+    emeritus: [djaglowski]
     seeking_new: true
 
 resource_attributes:

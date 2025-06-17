@@ -4,24 +4,16 @@ package metadata
 
 import (
 	"go.opentelemetry.io/collector/component"
-	"go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/trace"
 )
 
 var (
-	Type = component.MustNewType("otlpjsonfile")
+	Type      = component.MustNewType("otlpjsonfile")
+	ScopeName = "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/otlpjsonfilereceiver"
 )
 
 const (
-	TracesStability  = component.StabilityLevelAlpha
-	MetricsStability = component.StabilityLevelAlpha
-	LogsStability    = component.StabilityLevelAlpha
+	ProfilesStability = component.StabilityLevelDevelopment
+	TracesStability   = component.StabilityLevelAlpha
+	MetricsStability  = component.StabilityLevelAlpha
+	LogsStability     = component.StabilityLevelAlpha
 )
-
-func Meter(settings component.TelemetrySettings) metric.Meter {
-	return settings.MeterProvider.Meter("otelcol/otlpjsonfilereceiver")
-}
-
-func Tracer(settings component.TelemetrySettings) trace.Tracer {
-	return settings.TracerProvider.Tracer("otelcol/otlpjsonfilereceiver")
-}

@@ -13,8 +13,10 @@ import (
 	"go.opentelemetry.io/collector/extension/extensiontest"
 )
 
+var typ = component.MustNewType("opamp")
+
 func TestComponentFactoryType(t *testing.T) {
-	require.Equal(t, "opamp", NewFactory().Type().String())
+	require.Equal(t, typ, NewFactory().Type())
 }
 
 func TestComponentConfigStruct(t *testing.T) {
@@ -29,20 +31,20 @@ func TestComponentLifecycle(t *testing.T) {
 	cfg := factory.CreateDefaultConfig()
 	sub, err := cm.Sub("tests::config")
 	require.NoError(t, err)
-	require.NoError(t, component.UnmarshalConfig(sub, cfg))
+	require.NoError(t, sub.Unmarshal(&cfg))
 	t.Run("shutdown", func(t *testing.T) {
-		e, err := factory.CreateExtension(context.Background(), extensiontest.NewNopCreateSettings(), cfg)
+		e, err := factory.Create(context.Background(), extensiontest.NewNopSettings(typ), cfg)
 		require.NoError(t, err)
 		err = e.Shutdown(context.Background())
 		require.NoError(t, err)
 	})
 	t.Run("lifecycle", func(t *testing.T) {
-		firstExt, err := factory.CreateExtension(context.Background(), extensiontest.NewNopCreateSettings(), cfg)
+		firstExt, err := factory.Create(context.Background(), extensiontest.NewNopSettings(typ), cfg)
 		require.NoError(t, err)
 		require.NoError(t, firstExt.Start(context.Background(), componenttest.NewNopHost()))
 		require.NoError(t, firstExt.Shutdown(context.Background()))
 
-		secondExt, err := factory.CreateExtension(context.Background(), extensiontest.NewNopCreateSettings(), cfg)
+		secondExt, err := factory.Create(context.Background(), extensiontest.NewNopSettings(typ), cfg)
 		require.NoError(t, err)
 		require.NoError(t, secondExt.Start(context.Background(), componenttest.NewNopHost()))
 		require.NoError(t, secondExt.Shutdown(context.Background()))

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/component/componenttest"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/entry"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator"
@@ -18,7 +19,8 @@ import (
 
 func newTestParser(t *testing.T) *Parser {
 	config := NewConfigWithID("test")
-	op, err := config.Build(testutil.Logger(t))
+	set := componenttest.NewNopTelemetrySettings()
+	op, err := config.Build(set)
 	require.NoError(t, err)
 	return op.(*Parser)
 }
@@ -31,7 +33,8 @@ func TestInit(t *testing.T) {
 
 func TestConfigBuild(t *testing.T) {
 	config := NewConfigWithID("test")
-	op, err := config.Build(testutil.Logger(t))
+	set := componenttest.NewNopTelemetrySettings()
+	op, err := config.Build(set)
 	require.NoError(t, err)
 	require.IsType(t, &Parser{}, op)
 }
@@ -39,9 +42,9 @@ func TestConfigBuild(t *testing.T) {
 func TestConfigBuildFailure(t *testing.T) {
 	config := NewConfigWithID("test")
 	config.OnError = "invalid_on_error"
-	_, err := config.Build(testutil.Logger(t))
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "invalid `on_error` field")
+	set := componenttest.NewNopTelemetrySettings()
+	_, err := config.Build(set)
+	require.ErrorContains(t, err, "invalid `on_error` field")
 }
 
 func TestBuild(t *testing.T) {
@@ -133,7 +136,8 @@ func TestBuild(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			cfg := tc.input
-			_, err := cfg.Build(testutil.Logger(t))
+			set := componenttest.NewNopTelemetrySettings()
+			_, err := cfg.Build(set)
 			if tc.expectErr {
 				require.Error(t, err)
 				return
@@ -146,22 +150,19 @@ func TestBuild(t *testing.T) {
 func TestParserStringFailure(t *testing.T) {
 	parser := newTestParser(t)
 	_, err := parser.parse("invalid")
-	require.Error(t, err)
-	require.Contains(t, err.Error(), fmt.Sprintf("cannot split %q into 2 items, got 1 item(s)", "invalid"))
+	require.ErrorContains(t, err, fmt.Sprintf("cannot split %q into 2 items, got 1 item(s)", "invalid"))
 }
 
 func TestParserInvalidType(t *testing.T) {
 	parser := newTestParser(t)
 	_, err := parser.parse([]int{})
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "type []int cannot be parsed as key value pairs")
+	require.ErrorContains(t, err, "type []int cannot be parsed as key value pairs")
 }
 
 func TestParserEmptyInput(t *testing.T) {
 	parser := newTestParser(t)
 	_, err := parser.parse("")
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "parse from field body is empty")
+	require.ErrorContains(t, err, "parse from field body is empty")
 }
 
 func TestKVImplementations(t *testing.T) {
@@ -687,6 +688,24 @@ key=value`,
 			true,
 			false,
 		},
+		{
+			"containerd output",
+			func(_ *Config) {},
+			&entry.Entry{
+				Body: `time="2024-11-01T12:38:17.992190505Z" level=warning msg="cleanup warnings time='2024-11-01T12:38:17Z' level=debug msg=\"starting signal loop\" namespace=moby-10000.10000 pid=1608080 runtime=io.containerd.runc.v2" namespace=moby-10000.10000`,
+			},
+			&entry.Entry{
+				Attributes: map[string]any{
+					"time":      "2024-11-01T12:38:17.992190505Z",
+					"level":     "warning",
+					"msg":       `cleanup warnings time='2024-11-01T12:38:17Z' level=debug msg=\"starting signal loop\" namespace=moby-10000.10000 pid=1608080 runtime=io.containerd.runc.v2`,
+					"namespace": "moby-10000.10000",
+				},
+				Body: `time="2024-11-01T12:38:17.992190505Z" level=warning msg="cleanup warnings time='2024-11-01T12:38:17Z' level=debug msg=\"starting signal loop\" namespace=moby-10000.10000 pid=1608080 runtime=io.containerd.runc.v2" namespace=moby-10000.10000`,
+			},
+			false,
+			false,
+		},
 	}
 
 	for _, tc := range cases {
@@ -695,7 +714,8 @@ key=value`,
 			cfg.OutputIDs = []string{"fake"}
 			tc.configure(cfg)
 
-			op, err := cfg.Build(testutil.Logger(t))
+			set := componenttest.NewNopTelemetrySettings()
+			op, err := cfg.Build(set)
 			if tc.expectBuildErr {
 				require.Error(t, err)
 				return

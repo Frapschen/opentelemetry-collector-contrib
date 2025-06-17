@@ -34,6 +34,8 @@ type MetricsConfig struct {
 	PostgresqlBgwriterCheckpointCount  MetricConfig `mapstructure:"postgresql.bgwriter.checkpoint.count"`
 	PostgresqlBgwriterDuration         MetricConfig `mapstructure:"postgresql.bgwriter.duration"`
 	PostgresqlBgwriterMaxwritten       MetricConfig `mapstructure:"postgresql.bgwriter.maxwritten"`
+	PostgresqlBlksHit                  MetricConfig `mapstructure:"postgresql.blks_hit"`
+	PostgresqlBlksRead                 MetricConfig `mapstructure:"postgresql.blks_read"`
 	PostgresqlBlocksRead               MetricConfig `mapstructure:"postgresql.blocks_read"`
 	PostgresqlCommits                  MetricConfig `mapstructure:"postgresql.commits"`
 	PostgresqlConnectionMax            MetricConfig `mapstructure:"postgresql.connection.max"`
@@ -52,6 +54,11 @@ type MetricsConfig struct {
 	PostgresqlTableSize                MetricConfig `mapstructure:"postgresql.table.size"`
 	PostgresqlTableVacuumCount         MetricConfig `mapstructure:"postgresql.table.vacuum.count"`
 	PostgresqlTempFiles                MetricConfig `mapstructure:"postgresql.temp_files"`
+	PostgresqlTupDeleted               MetricConfig `mapstructure:"postgresql.tup_deleted"`
+	PostgresqlTupFetched               MetricConfig `mapstructure:"postgresql.tup_fetched"`
+	PostgresqlTupInserted              MetricConfig `mapstructure:"postgresql.tup_inserted"`
+	PostgresqlTupReturned              MetricConfig `mapstructure:"postgresql.tup_returned"`
+	PostgresqlTupUpdated               MetricConfig `mapstructure:"postgresql.tup_updated"`
 	PostgresqlWalAge                   MetricConfig `mapstructure:"postgresql.wal.age"`
 	PostgresqlWalDelay                 MetricConfig `mapstructure:"postgresql.wal.delay"`
 	PostgresqlWalLag                   MetricConfig `mapstructure:"postgresql.wal.lag"`
@@ -76,6 +83,12 @@ func DefaultMetricsConfig() MetricsConfig {
 		},
 		PostgresqlBgwriterMaxwritten: MetricConfig{
 			Enabled: true,
+		},
+		PostgresqlBlksHit: MetricConfig{
+			Enabled: false,
+		},
+		PostgresqlBlksRead: MetricConfig{
+			Enabled: false,
 		},
 		PostgresqlBlocksRead: MetricConfig{
 			Enabled: true,
@@ -131,6 +144,21 @@ func DefaultMetricsConfig() MetricsConfig {
 		PostgresqlTempFiles: MetricConfig{
 			Enabled: false,
 		},
+		PostgresqlTupDeleted: MetricConfig{
+			Enabled: false,
+		},
+		PostgresqlTupFetched: MetricConfig{
+			Enabled: false,
+		},
+		PostgresqlTupInserted: MetricConfig{
+			Enabled: false,
+		},
+		PostgresqlTupReturned: MetricConfig{
+			Enabled: false,
+		},
+		PostgresqlTupUpdated: MetricConfig{
+			Enabled: false,
+		},
 		PostgresqlWalAge: MetricConfig{
 			Enabled: true,
 		},
@@ -145,9 +173,14 @@ func DefaultMetricsConfig() MetricsConfig {
 
 // ResourceAttributeConfig provides common config for a particular resource attribute.
 type ResourceAttributeConfig struct {
-	Enabled bool            `mapstructure:"enabled"`
-	Include []filter.Config `mapstructure:"include"`
-	Exclude []filter.Config `mapstructure:"exclude"`
+	Enabled bool `mapstructure:"enabled"`
+	// Experimental: MetricsInclude defines a list of filters for attribute values.
+	// If the list is not empty, only metrics with matching resource attribute values will be emitted.
+	MetricsInclude []filter.Config `mapstructure:"metrics_include"`
+	// Experimental: MetricsExclude defines a list of filters for attribute values.
+	// If the list is not empty, metrics with matching resource attribute values will not be emitted.
+	// MetricsInclude has higher priority than MetricsExclude.
+	MetricsExclude []filter.Config `mapstructure:"metrics_exclude"`
 
 	enabledSetByUser bool
 }

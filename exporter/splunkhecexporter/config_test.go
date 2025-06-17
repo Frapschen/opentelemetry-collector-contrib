@@ -16,6 +16,7 @@ import (
 	"go.opentelemetry.io/collector/config/configretry"
 	"go.opentelemetry.io/collector/config/configtls"
 	"go.opentelemetry.io/collector/confmap/confmaptest"
+	"go.opentelemetry.io/collector/confmap/xconfmap"
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/splunkhecexporter/internal/metadata"
@@ -31,10 +32,27 @@ func TestLoadConfig(t *testing.T) {
 	// Endpoint and Token do not have a default value so set them directly.
 	defaultCfg := createDefaultConfig().(*Config)
 	defaultCfg.Token = "00000000-0000-0000-0000-0000000000000"
-	defaultCfg.ClientConfig.Endpoint = "https://splunk:8088/services/collector"
+	defaultCfg.Endpoint = "https://splunk:8088/services/collector"
 
 	hundred := 100
 	idleConnTimeout := 10 * time.Second
+
+	clientConfig := confighttp.NewDefaultClientConfig()
+	clientConfig.Timeout = 10 * time.Second
+	clientConfig.Endpoint = "https://splunk:8088/services/collector"
+	clientConfig.TLS = configtls.ClientConfig{
+		Config: configtls.Config{
+			CAFile:   "",
+			CertFile: "",
+			KeyFile:  "",
+		},
+		InsecureSkipVerify: false,
+	}
+	clientConfig.HTTP2PingTimeout = 10 * time.Second
+	clientConfig.HTTP2ReadIdleTimeout = 10 * time.Second
+	clientConfig.MaxIdleConns = hundred
+	clientConfig.MaxIdleConnsPerHost = hundred
+	clientConfig.IdleConnTimeout = idleConnTimeout
 
 	tests := []struct {
 		id       component.ID
@@ -60,23 +78,7 @@ func TestLoadConfig(t *testing.T) {
 				MaxContentLengthLogs:    2 * 1024 * 1024,
 				MaxContentLengthMetrics: 2 * 1024 * 1024,
 				MaxContentLengthTraces:  2 * 1024 * 1024,
-				ClientConfig: confighttp.ClientConfig{
-					Timeout:  10 * time.Second,
-					Endpoint: "https://splunk:8088/services/collector",
-					TLSSetting: configtls.ClientConfig{
-						Config: configtls.Config{
-							CAFile:   "",
-							CertFile: "",
-							KeyFile:  "",
-						},
-						InsecureSkipVerify: false,
-					},
-					MaxIdleConns:         &hundred,
-					MaxIdleConnsPerHost:  &hundred,
-					IdleConnTimeout:      &idleConnTimeout,
-					HTTP2ReadIdleTimeout: 10 * time.Second,
-					HTTP2PingTimeout:     10 * time.Second,
-				},
+				ClientConfig:            clientConfig,
 				BackOffConfig: configretry.BackOffConfig{
 					Enabled:             true,
 					InitialInterval:     10 * time.Second,
@@ -85,10 +87,26 @@ func TestLoadConfig(t *testing.T) {
 					RandomizationFactor: backoff.DefaultRandomizationFactor,
 					Multiplier:          backoff.DefaultMultiplier,
 				},
-				QueueSettings: exporterhelper.QueueSettings{
+				QueueSettings: exporterhelper.QueueBatchConfig{
 					Enabled:      true,
 					NumConsumers: 2,
 					QueueSize:    10,
+					Sizer:        exporterhelper.RequestSizerTypeRequests,
+				},
+				BatcherConfig: exporterhelper.BatcherConfig{ //nolint:staticcheck
+					Enabled:      true,
+					FlushTimeout: time.Second,
+					SizeConfig: exporterhelper.SizeConfig{ //nolint:staticcheck
+						Sizer:   exporterhelper.RequestSizerTypeItems,
+						MinSize: 1,
+						MaxSize: 10,
+					},
+				},
+				OtelAttrsToHec: splunk.HecToOtelAttrs{
+					Source:     "mysource",
+					SourceType: "mysourcetype",
+					Index:      "myindex",
+					Host:       "myhost",
 				},
 				HecToOtelAttrs: splunk.HecToOtelAttrs{
 					Source:     "mysource",
@@ -126,9 +144,9 @@ func TestLoadConfig(t *testing.T) {
 
 			sub, err := cm.Sub(tt.id.String())
 			require.NoError(t, err)
-			require.NoError(t, component.UnmarshalConfig(sub, cfg))
+			require.NoError(t, sub.Unmarshal(cfg))
 
-			assert.NoError(t, component.ValidateConfig(cfg))
+			assert.NoError(t, xconfmap.Validate(cfg))
 			assert.Equal(t, tt.expected, cfg)
 		})
 	}
@@ -149,7 +167,7 @@ func TestConfig_Validate(t *testing.T) {
 			name: "bad url",
 			cfg: func() *Config {
 				cfg := createDefaultConfig().(*Config)
-				cfg.ClientConfig.Endpoint = "cache_object:foo/bar"
+				cfg.Endpoint = "cache_object:foo/bar"
 				cfg.Token = "foo"
 				return cfg
 			}(),
@@ -159,7 +177,7 @@ func TestConfig_Validate(t *testing.T) {
 			name: "missing token",
 			cfg: func() *Config {
 				cfg := createDefaultConfig().(*Config)
-				cfg.ClientConfig.Endpoint = "http://example.com"
+				cfg.Endpoint = "http://example.com"
 				return cfg
 			}(),
 			wantErr: "requires a non-empty \"token\"",
@@ -168,7 +186,7 @@ func TestConfig_Validate(t *testing.T) {
 			name: "max default content-length for logs",
 			cfg: func() *Config {
 				cfg := createDefaultConfig().(*Config)
-				cfg.ClientConfig.Endpoint = "http://foo_bar.com"
+				cfg.Endpoint = "http://foo_bar.com"
 				cfg.MaxContentLengthLogs = maxContentLengthLogsLimit + 1
 				cfg.Token = "foo"
 				return cfg
@@ -179,7 +197,7 @@ func TestConfig_Validate(t *testing.T) {
 			name: "max default content-length for metrics",
 			cfg: func() *Config {
 				cfg := createDefaultConfig().(*Config)
-				cfg.ClientConfig.Endpoint = "http://foo_bar.com"
+				cfg.Endpoint = "http://foo_bar.com"
 				cfg.MaxContentLengthMetrics = maxContentLengthMetricsLimit + 1
 				cfg.Token = "foo"
 				return cfg
@@ -190,7 +208,7 @@ func TestConfig_Validate(t *testing.T) {
 			name: "max default content-length for traces",
 			cfg: func() *Config {
 				cfg := createDefaultConfig().(*Config)
-				cfg.ClientConfig.Endpoint = "http://foo_bar.com"
+				cfg.Endpoint = "http://foo_bar.com"
 				cfg.MaxContentLengthTraces = maxContentLengthTracesLimit + 1
 				cfg.Token = "foo"
 				return cfg
@@ -201,7 +219,7 @@ func TestConfig_Validate(t *testing.T) {
 			name: "max default event-size",
 			cfg: func() *Config {
 				cfg := createDefaultConfig().(*Config)
-				cfg.ClientConfig.Endpoint = "http://foo_bar.com"
+				cfg.Endpoint = "http://foo_bar.com"
 				cfg.MaxEventSize = maxMaxEventSize + 1
 				cfg.Token = "foo"
 				return cfg
@@ -212,19 +230,19 @@ func TestConfig_Validate(t *testing.T) {
 			name: "negative queue size",
 			cfg: func() *Config {
 				cfg := createDefaultConfig().(*Config)
-				cfg.ClientConfig.Endpoint = "http://foo_bar.com"
+				cfg.Endpoint = "http://foo_bar.com"
 				cfg.QueueSettings.Enabled = true
 				cfg.QueueSettings.QueueSize = -5
 				cfg.Token = "foo"
 				return cfg
 			}(),
-			wantErr: "queue size must be positive",
+			wantErr: "sending_queue: `queue_size` must be positive",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := component.ValidateConfig(tt.cfg)
+			err := xconfmap.Validate(tt.cfg)
 			if tt.wantErr == "" {
 				require.NoError(t, err)
 			} else {

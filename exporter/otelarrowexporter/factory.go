@@ -5,12 +5,9 @@ package otelarrowexporter // import "github.com/open-telemetry/opentelemetry-col
 
 import (
 	"context"
-	"runtime"
 	"time"
 
 	arrowpb "github.com/open-telemetry/otel-arrow/api/experimental/arrow/v1"
-	"github.com/open-telemetry/otel-arrow/collector/compression/zstd"
-	"github.com/open-telemetry/otel-arrow/collector/netstats"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/configcompression"
 	"go.opentelemetry.io/collector/config/configgrpc"
@@ -23,9 +20,11 @@ import (
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/otelarrowexporter/internal/arrow"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/otelarrowexporter/internal/metadata"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/otelarrow/compression/zstd"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/otelarrow/netstats"
 )
 
-// NewFactory creates a factory for OTel-Arrow exporter.
+// NewFactory creates a factory for OTLP exporter.
 func NewFactory() exporter.Factory {
 	return exporter.NewFactory(
 		metadata.Type,
@@ -37,11 +36,31 @@ func NewFactory() exporter.Factory {
 }
 
 func createDefaultConfig() component.Config {
-	return &Config{
-		TimeoutSettings: exporterhelper.NewDefaultTimeoutSettings(),
-		RetrySettings:   configretry.NewDefaultBackOffConfig(),
-		QueueSettings:   exporterhelper.NewDefaultQueueSettings(),
+	// These defaults are taken from the experimental setup used
+	// in the blog post covering Phase 1 performance results.  These
+	// were the defaults used in the concurrentbatchprocessor, too.
+	queueCfg := exporterhelper.NewDefaultQueueConfig()
+	queueCfg.BlockOnOverflow = true
+	queueCfg.Sizer = exporterhelper.RequestSizerTypeItems
+	queueCfg.Batch = &exporterhelper.BatchConfig{
+		FlushTimeout: time.Second,
+		MinSize:      1000,
+		MaxSize:      1500,
+	}
+	// The default is configured in items, this value represents
+	// 60-100 concurrent batches.
+	queueCfg.QueueSize = 100000
+	// This enables by default an appropriate number of consumers
+	// Note for this exporter the consumer's role is to take from
+	// the queue and call into an Arrow stream. When the exporter
+	// falls back to OTLP, this is the number of concurrent OTLP
+	// exports.
+	queueCfg.NumConsumers = int(queueCfg.QueueSize / queueCfg.Batch.MinSize)
 
+	return &Config{
+		TimeoutSettings: exporterhelper.NewDefaultTimeoutConfig(),
+		RetryConfig:     configretry.NewDefaultBackOffConfig(),
+		QueueSettings:   queueCfg,
 		ClientConfig: configgrpc.ClientConfig{
 			Headers: map[string]configopaque.String{},
 			// Default to zstd compression
@@ -54,25 +73,26 @@ func createDefaultConfig() component.Config {
 			// destination.
 			BalancerName: "round_robin",
 		},
-		Arrow: ArrowSettings{
-			NumStreams:        runtime.NumCPU(),
-			MaxStreamLifetime: time.Hour,
+		Arrow: ArrowConfig{
+			NumStreams:        arrow.DefaultNumStreams,
+			MaxStreamLifetime: arrow.DefaultMaxStreamLifetime,
 
-			Zstd: zstd.DefaultEncoderConfig(),
+			Zstd:        zstd.DefaultEncoderConfig(),
+			Prioritizer: arrow.DefaultPrioritizer,
 
-			// PayloadCompression is off by default because gRPC
-			// compression is on by default, above.
-			PayloadCompression: "",
+			// Note the default payload compression is
+			PayloadCompression: arrow.DefaultPayloadCompression,
 		},
 	}
 }
 
-func (e *baseExporter) helperOptions() []exporterhelper.Option {
+func helperOptions(e exp, qbs exporterhelper.QueueBatchSettings) []exporterhelper.Option {
+	cfg := e.getConfig().(*Config)
 	return []exporterhelper.Option{
 		exporterhelper.WithCapabilities(consumer.Capabilities{MutatesData: false}),
-		exporterhelper.WithTimeout(e.config.TimeoutSettings),
-		exporterhelper.WithRetry(e.config.RetrySettings),
-		exporterhelper.WithQueue(e.config.QueueSettings),
+		exporterhelper.WithTimeout(cfg.TimeoutSettings),
+		exporterhelper.WithRetry(cfg.RetryConfig),
+		exporterhelper.WithQueueBatch(cfg.QueueSettings, qbs),
 		exporterhelper.WithStart(e.start),
 		exporterhelper.WithShutdown(e.shutdown),
 	}
@@ -94,16 +114,16 @@ func createArrowTracesStream(conn *grpc.ClientConn) arrow.StreamClientFunc {
 
 func createTracesExporter(
 	ctx context.Context,
-	set exporter.CreateSettings,
+	set exporter.Settings,
 	cfg component.Config,
 ) (exporter.Traces, error) {
-	exp, err := newExporter(cfg, set, createArrowTracesStream)
+	e, err := newMetadataExporter(cfg, set, createArrowTracesStream)
 	if err != nil {
 		return nil, err
 	}
-	return exporterhelper.NewTracesExporter(ctx, exp.settings, exp.config,
-		exp.pushTraces,
-		exp.helperOptions()...,
+	return exporterhelper.NewTraces(ctx, e.getSettings(), e.getConfig(),
+		e.pushTraces,
+		helperOptions(e, exporterhelper.NewTracesQueueBatchSettings())...,
 	)
 }
 
@@ -113,16 +133,16 @@ func createArrowMetricsStream(conn *grpc.ClientConn) arrow.StreamClientFunc {
 
 func createMetricsExporter(
 	ctx context.Context,
-	set exporter.CreateSettings,
+	set exporter.Settings,
 	cfg component.Config,
 ) (exporter.Metrics, error) {
-	exp, err := newExporter(cfg, set, createArrowMetricsStream)
+	e, err := newMetadataExporter(cfg, set, createArrowMetricsStream)
 	if err != nil {
 		return nil, err
 	}
-	return exporterhelper.NewMetricsExporter(ctx, exp.settings, exp.config,
-		exp.pushMetrics,
-		exp.helperOptions()...,
+	return exporterhelper.NewMetrics(ctx, e.getSettings(), e.getConfig(),
+		e.pushMetrics,
+		helperOptions(e, exporterhelper.NewMetricsQueueBatchSettings())...,
 	)
 }
 
@@ -132,15 +152,15 @@ func createArrowLogsStream(conn *grpc.ClientConn) arrow.StreamClientFunc {
 
 func createLogsExporter(
 	ctx context.Context,
-	set exporter.CreateSettings,
+	set exporter.Settings,
 	cfg component.Config,
 ) (exporter.Logs, error) {
-	exp, err := newExporter(cfg, set, createArrowLogsStream)
+	e, err := newMetadataExporter(cfg, set, createArrowLogsStream)
 	if err != nil {
 		return nil, err
 	}
-	return exporterhelper.NewLogsExporter(ctx, exp.settings, exp.config,
-		exp.pushLogs,
-		exp.helperOptions()...,
+	return exporterhelper.NewLogs(ctx, e.getSettings(), e.getConfig(),
+		e.pushLogs,
+		helperOptions(e, exporterhelper.NewLogsQueueBatchSettings())...,
 	)
 }

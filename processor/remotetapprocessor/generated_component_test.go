@@ -20,8 +20,10 @@ import (
 	"go.opentelemetry.io/collector/processor/processortest"
 )
 
+var typ = component.MustNewType("remotetap")
+
 func TestComponentFactoryType(t *testing.T) {
-	require.Equal(t, "remotetap", NewFactory().Type().String())
+	require.Equal(t, typ, NewFactory().Type())
 }
 
 func TestComponentConfigStruct(t *testing.T) {
@@ -32,28 +34,28 @@ func TestComponentLifecycle(t *testing.T) {
 	factory := NewFactory()
 
 	tests := []struct {
+		createFn func(ctx context.Context, set processor.Settings, cfg component.Config) (component.Component, error)
 		name     string
-		createFn func(ctx context.Context, set processor.CreateSettings, cfg component.Config) (component.Component, error)
 	}{
 
 		{
 			name: "logs",
-			createFn: func(ctx context.Context, set processor.CreateSettings, cfg component.Config) (component.Component, error) {
-				return factory.CreateLogsProcessor(ctx, set, cfg, consumertest.NewNop())
+			createFn: func(ctx context.Context, set processor.Settings, cfg component.Config) (component.Component, error) {
+				return factory.CreateLogs(ctx, set, cfg, consumertest.NewNop())
 			},
 		},
 
 		{
 			name: "metrics",
-			createFn: func(ctx context.Context, set processor.CreateSettings, cfg component.Config) (component.Component, error) {
-				return factory.CreateMetricsProcessor(ctx, set, cfg, consumertest.NewNop())
+			createFn: func(ctx context.Context, set processor.Settings, cfg component.Config) (component.Component, error) {
+				return factory.CreateMetrics(ctx, set, cfg, consumertest.NewNop())
 			},
 		},
 
 		{
 			name: "traces",
-			createFn: func(ctx context.Context, set processor.CreateSettings, cfg component.Config) (component.Component, error) {
-				return factory.CreateTracesProcessor(ctx, set, cfg, consumertest.NewNop())
+			createFn: func(ctx context.Context, set processor.Settings, cfg component.Config) (component.Component, error) {
+				return factory.CreateTraces(ctx, set, cfg, consumertest.NewNop())
 			},
 		},
 	}
@@ -63,23 +65,23 @@ func TestComponentLifecycle(t *testing.T) {
 	cfg := factory.CreateDefaultConfig()
 	sub, err := cm.Sub("tests::config")
 	require.NoError(t, err)
-	require.NoError(t, component.UnmarshalConfig(sub, cfg))
+	require.NoError(t, sub.Unmarshal(&cfg))
 
-	for _, test := range tests {
-		t.Run(test.name+"-shutdown", func(t *testing.T) {
-			c, err := test.createFn(context.Background(), processortest.NewNopCreateSettings(), cfg)
+	for _, tt := range tests {
+		t.Run(tt.name+"-shutdown", func(t *testing.T) {
+			c, err := tt.createFn(context.Background(), processortest.NewNopSettings(typ), cfg)
 			require.NoError(t, err)
 			err = c.Shutdown(context.Background())
 			require.NoError(t, err)
 		})
-		t.Run(test.name+"-lifecycle", func(t *testing.T) {
-			c, err := test.createFn(context.Background(), processortest.NewNopCreateSettings(), cfg)
+		t.Run(tt.name+"-lifecycle", func(t *testing.T) {
+			c, err := tt.createFn(context.Background(), processortest.NewNopSettings(typ), cfg)
 			require.NoError(t, err)
 			host := componenttest.NewNopHost()
 			err = c.Start(context.Background(), host)
 			require.NoError(t, err)
 			require.NotPanics(t, func() {
-				switch test.name {
+				switch tt.name {
 				case "logs":
 					e, ok := c.(processor.Logs)
 					require.True(t, ok)

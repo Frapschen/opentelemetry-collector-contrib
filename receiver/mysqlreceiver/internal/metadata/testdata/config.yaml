@@ -67,6 +67,8 @@ all_set:
       enabled: true
     mysql.statement_event.wait.time:
       enabled: true
+    mysql.table.average_row_length:
+      enabled: true
     mysql.table.io.wait.count:
       enabled: true
     mysql.table.io.wait.time:
@@ -78,6 +80,10 @@ all_set:
     mysql.table.lock_wait.write.count:
       enabled: true
     mysql.table.lock_wait.write.time:
+      enabled: true
+    mysql.table.rows:
+      enabled: true
+    mysql.table.size:
       enabled: true
     mysql.table_open_cache:
       enabled: true
@@ -158,6 +164,8 @@ none_set:
       enabled: false
     mysql.statement_event.wait.time:
       enabled: false
+    mysql.table.average_row_length:
+      enabled: false
     mysql.table.io.wait.count:
       enabled: false
     mysql.table.io.wait.time:
@@ -169,6 +177,10 @@ none_set:
     mysql.table.lock_wait.write.count:
       enabled: false
     mysql.table.lock_wait.write.time:
+      enabled: false
+    mysql.table.rows:
+      enabled: false
+    mysql.table.size:
       enabled: false
     mysql.table_open_cache:
       enabled: false
@@ -185,11 +197,11 @@ filter_set_include:
   resource_attributes:
     mysql.instance.endpoint:
       enabled: true
-      include:
+      metrics_include:
         - regexp: ".*"
 filter_set_exclude:
   resource_attributes:
     mysql.instance.endpoint:
       enabled: true
-      exclude:
+      metrics_exclude:
         - strict: "mysql.instance.endpoint-val"

@@ -36,54 +36,30 @@ type connectorImp struct {
 	metricsConsumer consumer.Metrics
 	hostMetrics     *hostMetrics
 
-	metricHostCount      metric.Int64ObservableGauge
-	metricFlushCount     metric.Int64Counter
-	metricDatapointCount metric.Int64Counter
+	telemetryBuilder *metadata.TelemetryBuilder
 }
 
 func newConnector(logger *zap.Logger, set component.TelemetrySettings, config component.Config) (*connectorImp, error) {
 	hm := newHostMetrics()
-	mHostCount, err := metadata.Meter(set).Int64ObservableGauge(
-		"grafanacloud_host_count",
-		metric.WithDescription("Number of unique hosts"),
-		metric.WithUnit("1"),
-		metric.WithInt64Callback(func(_ context.Context, result metric.Int64Observer) error {
-			result.Observe(int64(hm.count()))
-			return nil
-		}),
-	)
-
+	telemetryBuilder, err := metadata.NewTelemetryBuilder(set)
 	if err != nil {
 		return nil, err
 	}
-
-	mFlushCount, err := metadata.Meter(set).Int64Counter(
-		"grafanacloud_flush_count",
-		metric.WithDescription("Number of metrics flushes"),
-		metric.WithUnit("1"),
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	mDatapointCount, err := metadata.Meter(set).Int64Counter(
-		"grafanacloud_datapoint_count",
-		metric.WithDescription("Number of datapoints sent to Grafana Cloud"),
-		metric.WithUnit("1"),
-	)
+	err = telemetryBuilder.RegisterGrafanacloudHostCountCallback(func(_ context.Context, observer metric.Int64Observer) error {
+		observer.Observe(int64(hm.count()))
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
 
 	cfg := config.(*Config)
 	return &connectorImp{
-		config:               *cfg,
-		logger:               logger,
-		done:                 make(chan struct{}),
-		hostMetrics:          hm,
-		metricHostCount:      mHostCount,
-		metricFlushCount:     mFlushCount,
-		metricDatapointCount: mDatapointCount,
+		config:           *cfg,
+		logger:           logger,
+		done:             make(chan struct{}),
+		hostMetrics:      hm,
+		telemetryBuilder: telemetryBuilder,
 	}, nil
 }
 
@@ -155,9 +131,9 @@ func (c *connectorImp) flush(ctx context.Context) error {
 	if count > 0 {
 		c.hostMetrics.reset()
 		c.logger.Debug("Flushing metrics", zap.Int("count", count))
-		c.metricDatapointCount.Add(ctx, int64(metrics.DataPointCount()))
+		c.telemetryBuilder.GrafanacloudDatapointCount.Add(ctx, int64(metrics.DataPointCount()))
 		err = c.metricsConsumer.ConsumeMetrics(ctx, *metrics)
 	}
-	c.metricFlushCount.Add(ctx, int64(1))
+	c.telemetryBuilder.GrafanacloudFlushCount.Add(ctx, int64(1))
 	return err
 }

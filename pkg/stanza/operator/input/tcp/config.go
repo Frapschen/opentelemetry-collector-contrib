@@ -6,16 +6,17 @@ package tcp // import "github.com/open-telemetry/opentelemetry-collector-contrib
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"time"
 
 	"github.com/jpillora/backoff"
+	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/configtls"
-	"go.uber.org/zap"
 	"golang.org/x/text/encoding"
 
-	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/decode"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/coreinternal/textutils"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator/helper"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/split"
@@ -70,7 +71,7 @@ type BaseConfig struct {
 	Encoding         string                  `mapstructure:"encoding,omitempty"`
 	SplitConfig      split.Config            `mapstructure:"multiline,omitempty"`
 	TrimConfig       trim.Config             `mapstructure:",squash"`
-	SplitFuncBuilder SplitFuncBuilder
+	SplitFuncBuilder SplitFuncBuilder        `mapstructure:"-"`
 }
 
 type SplitFuncBuilder func(enc encoding.Encoding) (bufio.SplitFunc, error)
@@ -80,8 +81,8 @@ func (c Config) defaultSplitFuncBuilder(enc encoding.Encoding) (bufio.SplitFunc,
 }
 
 // Build will build a tcp input operator.
-func (c Config) Build(logger *zap.SugaredLogger) (operator.Operator, error) {
-	inputOperator, err := c.InputConfig.Build(logger)
+func (c Config) Build(set component.TelemetrySettings) (operator.Operator, error) {
+	inputOperator, err := c.InputConfig.Build(set)
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +97,7 @@ func (c Config) Build(logger *zap.SugaredLogger) (operator.Operator, error) {
 	}
 
 	if c.ListenAddress == "" {
-		return nil, fmt.Errorf("missing required parameter 'listen_address'")
+		return nil, errors.New("missing required parameter 'listen_address'")
 	}
 
 	// validate the input address
@@ -104,7 +105,7 @@ func (c Config) Build(logger *zap.SugaredLogger) (operator.Operator, error) {
 		return nil, fmt.Errorf("failed to resolve listen_address: %w", err)
 	}
 
-	enc, err := decode.LookupEncoding(c.Encoding)
+	enc, err := textutils.LookupEncoding(c.Encoding)
 	if err != nil {
 		return nil, err
 	}

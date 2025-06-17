@@ -4,13 +4,14 @@
 package udp // import "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator/input/udp"
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"sync"
 
-	"go.uber.org/zap"
+	"go.opentelemetry.io/collector/component"
 
-	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/decode"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/coreinternal/textutils"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator/helper"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/split"
@@ -75,14 +76,14 @@ type BaseConfig struct {
 }
 
 // Build will build a udp input operator.
-func (c Config) Build(logger *zap.SugaredLogger) (operator.Operator, error) {
-	inputOperator, err := c.InputConfig.Build(logger)
+func (c Config) Build(set component.TelemetrySettings) (operator.Operator, error) {
+	inputOperator, err := c.InputConfig.Build(set)
 	if err != nil {
 		return nil, err
 	}
 
 	if c.ListenAddress == "" {
-		return nil, fmt.Errorf("missing required parameter 'listen_address'")
+		return nil, errors.New("missing required parameter 'listen_address'")
 	}
 
 	address, err := net.ResolveUDPAddr("udp", c.ListenAddress)
@@ -90,7 +91,7 @@ func (c Config) Build(logger *zap.SugaredLogger) (operator.Operator, error) {
 		return nil, fmt.Errorf("failed to resolve listen_address: %w", err)
 	}
 
-	enc, err := decode.LookupEncoding(c.Encoding)
+	enc, err := textutils.LookupEncoding(c.Encoding)
 	if err != nil {
 		return nil, err
 	}

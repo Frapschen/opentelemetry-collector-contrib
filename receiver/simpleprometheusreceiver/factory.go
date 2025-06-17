@@ -33,13 +33,13 @@ func NewFactory() receiver.Factory {
 }
 
 func createDefaultConfig() component.Config {
+	clientConfig := confighttp.NewDefaultClientConfig()
+	clientConfig.Endpoint = defaultEndpoint
+	clientConfig.TLS = configtls.ClientConfig{
+		Insecure: true,
+	}
 	return &Config{
-		ClientConfig: confighttp.ClientConfig{
-			Endpoint: defaultEndpoint,
-			TLSSetting: configtls.ClientConfig{
-				Insecure: true,
-			},
-		},
+		ClientConfig:       clientConfig,
 		MetricsPath:        defaultMetricsPath,
 		CollectionInterval: defaultCollectionInterval,
 	}
@@ -47,7 +47,7 @@ func createDefaultConfig() component.Config {
 
 func createMetricsReceiver(
 	_ context.Context,
-	params receiver.CreateSettings,
+	params receiver.Settings,
 	cfg component.Config,
 	nextConsumer consumer.Metrics,
 ) (receiver.Metrics, error) {

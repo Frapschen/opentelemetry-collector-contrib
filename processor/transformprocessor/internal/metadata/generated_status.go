@@ -4,24 +4,16 @@ package metadata
 
 import (
 	"go.opentelemetry.io/collector/component"
-	"go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/trace"
 )
 
 var (
-	Type = component.MustNewType("transform")
+	Type      = component.MustNewType("transform")
+	ScopeName = "github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor"
 )
 
 const (
-	TracesStability  = component.StabilityLevelAlpha
-	MetricsStability = component.StabilityLevelAlpha
-	LogsStability    = component.StabilityLevelAlpha
+	ProfilesStability = component.StabilityLevelDevelopment
+	TracesStability   = component.StabilityLevelBeta
+	MetricsStability  = component.StabilityLevelBeta
+	LogsStability     = component.StabilityLevelBeta
 )
-
-func Meter(settings component.TelemetrySettings) metric.Meter {
-	return settings.MeterProvider.Meter("otelcol/transform")
-}
-
-func Tracer(settings component.TelemetrySettings) trace.Tracer {
-	return settings.TracerProvider.Tracer("otelcol/transform")
-}

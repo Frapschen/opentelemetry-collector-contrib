@@ -1,26 +1,21 @@
 // Copyright The OpenTelemetry Authors
 // SPDX-License-Identifier: Apache-2.0
 
-//go:build !windows
-
-// TODO review if tests should succeed on Windows
-
 package docker
 
 import (
 	"context"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"net/http/httptest"
-	"os"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
-	dtypes "github.com/docker/docker/api/types"
+	ctypes "github.com/docker/docker/api/types/container"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
@@ -47,34 +42,14 @@ func TestInvalidExclude(t *testing.T) {
 	assert.Equal(t, "could not determine docker client excluded images: invalid glob item: unexpected end of input", err.Error())
 }
 
-func tmpSock(t *testing.T) (net.Listener, string) {
-	f, err := os.CreateTemp(os.TempDir(), "testsock")
-	if err != nil {
-		t.Fatal(err)
-	}
-	addr := f.Name()
-	assert.NoError(t, os.Remove(addr))
-
-	listener, err := net.Listen("unix", addr)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	return listener, addr
-}
-
 func TestWatchingTimeouts(t *testing.T) {
-	listener, addr := tmpSock(t)
+	listener, addr := testListener(t)
 	defer func() {
 		assert.NoError(t, listener.Close())
 	}()
 
-	defer func() {
-		assert.NoError(t, os.Remove(addr))
-	}()
-
 	config := &Config{
-		Endpoint: fmt.Sprintf("unix://%s", addr),
+		Endpoint: portableEndpoint(addr),
 		Timeout:  50 * time.Millisecond,
 	}
 
@@ -87,8 +62,7 @@ func TestWatchingTimeouts(t *testing.T) {
 	shouldHaveTaken := time.Now().Add(100 * time.Millisecond).UnixNano()
 
 	err = cli.LoadContainerList(context.Background())
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), expectedError)
+	assert.ErrorContains(t, err, expectedError)
 	observed, logs := observer.New(zapcore.WarnLevel)
 	cli, err = NewDockerClient(config, zap.New(observed))
 	assert.NotNil(t, cli)
@@ -97,7 +71,7 @@ func TestWatchingTimeouts(t *testing.T) {
 	cnt, ofInterest := cli.inspectedContainerIsOfInterest(context.Background(), "SomeContainerId")
 	assert.False(t, ofInterest)
 	assert.Nil(t, cnt)
-	assert.Equal(t, 1, len(logs.All()))
+	assert.Len(t, logs.All(), 1)
 	for _, l := range logs.All() {
 		assert.Contains(t, l.ContextMap()["error"], expectedError)
 	}
@@ -109,17 +83,14 @@ func TestWatchingTimeouts(t *testing.T) {
 }
 
 func TestFetchingTimeouts(t *testing.T) {
-	listener, addr := tmpSock(t)
+	listener, addr := testListener(t)
 
 	defer func() {
 		assert.NoError(t, listener.Close())
 	}()
-	defer func() {
-		assert.NoError(t, os.Remove(addr))
-	}()
 
 	config := &Config{
-		Endpoint: fmt.Sprintf("unix://%s", addr),
+		Endpoint: portableEndpoint(addr),
 		Timeout:  50 * time.Millisecond,
 	}
 
@@ -139,8 +110,8 @@ func TestFetchingTimeouts(t *testing.T) {
 	statsJSON, err := cli.FetchContainerStatsAsJSON(
 		context.Background(),
 		Container{
-			ContainerJSON: &dtypes.ContainerJSON{
-				ContainerJSONBase: &dtypes.ContainerJSONBase{
+			ContainerJSON: &ctypes.InspectResponse{
+				ContainerJSONBase: &ctypes.ContainerJSONBase{
 					ID: "notARealContainerId",
 				},
 			},
@@ -148,11 +119,10 @@ func TestFetchingTimeouts(t *testing.T) {
 	)
 
 	assert.Nil(t, statsJSON)
-	require.Error(t, err)
 
-	assert.Contains(t, err.Error(), expectedError)
+	assert.ErrorContains(t, err, expectedError)
 
-	assert.Equal(t, 1, len(logs.All()))
+	assert.Len(t, logs.All(), 1)
 	for _, l := range logs.All() {
 		assert.Contains(t, l.ContextMap()["error"], expectedError)
 	}
@@ -161,21 +131,16 @@ func TestFetchingTimeouts(t *testing.T) {
 		t, time.Now().UnixNano(), shouldHaveTaken,
 		"Client timeouts don't appear to have been exercised.",
 	)
-
 }
 
 func TestToStatsJSONErrorHandling(t *testing.T) {
-	listener, addr := tmpSock(t)
+	listener, addr := testListener(t)
 	defer func() {
 		assert.NoError(t, listener.Close())
 	}()
 
-	defer func() {
-		assert.NoError(t, os.Remove(addr))
-	}()
-
 	config := &Config{
-		Endpoint: fmt.Sprintf("unix://%s", addr),
+		Endpoint: portableEndpoint(addr),
 		Timeout:  50 * time.Millisecond,
 	}
 
@@ -184,15 +149,15 @@ func TestToStatsJSONErrorHandling(t *testing.T) {
 	assert.NoError(t, err)
 
 	dc := &Container{
-		ContainerJSON: &dtypes.ContainerJSON{
-			ContainerJSONBase: &dtypes.ContainerJSONBase{
+		ContainerJSON: &ctypes.InspectResponse{
+			ContainerJSONBase: &ctypes.ContainerJSONBase{
 				ID: "notARealContainerId",
 			},
 		},
 	}
 
 	statsJSON, err := cli.toStatsJSON(
-		dtypes.ContainerStats{
+		ctypes.StatsResponseReader{
 			Body: io.NopCloser(strings.NewReader("")),
 		}, dc,
 	)
@@ -200,7 +165,7 @@ func TestToStatsJSONErrorHandling(t *testing.T) {
 	assert.Equal(t, io.EOF, err)
 
 	statsJSON, err = cli.toStatsJSON(
-		dtypes.ContainerStats{
+		ctypes.StatsResponseReader{
 			Body: io.NopCloser(strings.NewReader("{\"Networks\": 123}")),
 		}, dc,
 	)
@@ -216,7 +181,7 @@ func TestEventLoopHandlesError(t *testing.T) {
 			wg.Done()
 		}
 		_, err := w.Write([]byte{})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 	}))
 	defer srv.Close()
 
@@ -253,4 +218,12 @@ func TestEventLoopHandlesError(t *testing.T) {
 	case <-finished:
 		return
 	}
+}
+
+func portableEndpoint(addr string) string {
+	endpoint := fmt.Sprintf("unix://%s", addr)
+	if runtime.GOOS == "windows" {
+		endpoint = fmt.Sprintf("npipe://%s", strings.ReplaceAll(addr, "\\", "/"))
+	}
+	return endpoint
 }

@@ -19,12 +19,12 @@ var _ receiver.Metrics = (*metricsReceiver)(nil)
 
 type metricsReceiver struct {
 	cfg            *Config
-	set            receiver.CreateSettings
+	set            receiver.Settings
 	nextConsumer   consumer.Metrics
 	carbonReceiver receiver.Metrics
 }
 
-func newMetricsReceiver(cfg *Config, set receiver.CreateSettings, nextConsumer consumer.Metrics) *metricsReceiver {
+func newMetricsReceiver(cfg *Config, set receiver.Settings, nextConsumer consumer.Metrics) *metricsReceiver {
 	return &metricsReceiver{
 		cfg:          cfg,
 		set:          set,
@@ -49,13 +49,15 @@ func (r *metricsReceiver) Start(ctx context.Context, host component.Host) error 
 		TCPIdleTimeout: r.cfg.TCPIdleTimeout,
 		Parser: &protocol.Config{
 			Type: "plaintext", // TODO: update after other parsers are implemented for Carbon receiver.
-			Config: &WavefrontParser{
+			Config: &wavefrontParser{
 				ExtractCollectdTags: r.cfg.ExtractCollectdTags,
 			},
 		},
 	}
 
-	carbonReceiver, err := fact.CreateMetricsReceiver(ctx, r.set, carbonCfg, r.nextConsumer)
+	set := r.set
+	set.ID = component.NewIDWithName(fact.Type(), r.set.ID.String())
+	carbonReceiver, err := fact.CreateMetrics(ctx, set, carbonCfg, r.nextConsumer)
 	if err != nil {
 		return err
 	}

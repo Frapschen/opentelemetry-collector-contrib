@@ -11,6 +11,7 @@ import (
 
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/component/componenttest"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/entry"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator"
@@ -63,7 +64,8 @@ func TestBuild(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			cfg, err := tc.input()
 			require.NoError(t, err, "expected nil error when running test cases input func")
-			op, err := cfg.Build(testutil.Logger(t))
+			set := componenttest.NewNopTelemetrySettings()
+			op, err := cfg.Build(set)
 			if tc.expectErr {
 				require.Error(t, err, "expected error while building time_parser operator")
 				return
@@ -121,7 +123,8 @@ func TestProcess(t *testing.T) {
 				require.NoError(t, err)
 				return
 			}
-			op, err := cfg.Build(testutil.Logger(t))
+			set := componenttest.NewNopTelemetrySettings()
+			op, err := cfg.Build(set)
 			if err != nil {
 				require.NoError(t, err)
 				return
@@ -212,7 +215,7 @@ func TestTimeParser(t *testing.T) {
 		{
 			name:           "oracle",
 			sample:         "2019-10-15T10:42:01.900436-10:00",
-			expected:       time.Date(2019, time.October, 15, 10, 42, 01, 900436*1000, hst),
+			expected:       time.Date(2019, time.October, 15, 10, 42, 0o1, 900436*1000, hst),
 			gotimeLayout:   "2006-01-02T15:04:05.999999-07:00",
 			strptimeLayout: "%Y-%m-%dT%H:%M:%S.%f%j",
 		},
@@ -501,7 +504,8 @@ func runTimeParseTest(t *testing.T, cfg *Config, ent *entry.Entry, buildErr bool
 
 func runLossyTimeParseTest(_ *testing.T, cfg *Config, ent *entry.Entry, buildErr bool, parseErr bool, expected time.Time, maxLoss time.Duration) func(*testing.T) {
 	return func(t *testing.T) {
-		op, err := cfg.Build(testutil.Logger(t))
+		set := componenttest.NewNopTelemetrySettings()
+		op, err := cfg.Build(set)
 		if buildErr {
 			require.Error(t, err, "expected error when configuring operator")
 			return
@@ -527,7 +531,7 @@ func runLossyTimeParseTest(_ *testing.T, cfg *Config, ent *entry.Entry, buildErr
 		require.Equal(t, ots, ent.ObservedTimestamp, "time parsing should not change observed timestamp")
 
 		diff := time.Duration(math.Abs(float64(expected.Sub(ent.Timestamp))))
-		require.True(t, diff <= maxLoss)
+		require.LessOrEqual(t, diff, maxLoss)
 	}
 }
 

@@ -48,6 +48,7 @@ type MetricsConfig struct {
 	ElasticsearchIndexCacheSize                               MetricConfig `mapstructure:"elasticsearch.index.cache.size"`
 	ElasticsearchIndexDocuments                               MetricConfig `mapstructure:"elasticsearch.index.documents"`
 	ElasticsearchIndexOperationsCompleted                     MetricConfig `mapstructure:"elasticsearch.index.operations.completed"`
+	ElasticsearchIndexOperationsMergeCurrent                  MetricConfig `mapstructure:"elasticsearch.index.operations.merge.current"`
 	ElasticsearchIndexOperationsMergeDocsCount                MetricConfig `mapstructure:"elasticsearch.index.operations.merge.docs_count"`
 	ElasticsearchIndexOperationsMergeSize                     MetricConfig `mapstructure:"elasticsearch.index.operations.merge.size"`
 	ElasticsearchIndexOperationsTime                          MetricConfig `mapstructure:"elasticsearch.index.operations.time"`
@@ -178,9 +179,12 @@ func DefaultMetricsConfig() MetricsConfig {
 			Enabled: false,
 		},
 		ElasticsearchIndexDocuments: MetricConfig{
-			Enabled: false,
+			Enabled: true,
 		},
 		ElasticsearchIndexOperationsCompleted: MetricConfig{
+			Enabled: true,
+		},
+		ElasticsearchIndexOperationsMergeCurrent: MetricConfig{
 			Enabled: true,
 		},
 		ElasticsearchIndexOperationsMergeDocsCount: MetricConfig{
@@ -193,7 +197,7 @@ func DefaultMetricsConfig() MetricsConfig {
 			Enabled: true,
 		},
 		ElasticsearchIndexSegmentsCount: MetricConfig{
-			Enabled: false,
+			Enabled: true,
 		},
 		ElasticsearchIndexSegmentsMemory: MetricConfig{
 			Enabled: false,
@@ -401,9 +405,14 @@ func DefaultMetricsConfig() MetricsConfig {
 
 // ResourceAttributeConfig provides common config for a particular resource attribute.
 type ResourceAttributeConfig struct {
-	Enabled bool            `mapstructure:"enabled"`
-	Include []filter.Config `mapstructure:"include"`
-	Exclude []filter.Config `mapstructure:"exclude"`
+	Enabled bool `mapstructure:"enabled"`
+	// Experimental: MetricsInclude defines a list of filters for attribute values.
+	// If the list is not empty, only metrics with matching resource attribute values will be emitted.
+	MetricsInclude []filter.Config `mapstructure:"metrics_include"`
+	// Experimental: MetricsExclude defines a list of filters for attribute values.
+	// If the list is not empty, metrics with matching resource attribute values will not be emitted.
+	// MetricsInclude has higher priority than MetricsExclude.
+	MetricsExclude []filter.Config `mapstructure:"metrics_exclude"`
 
 	enabledSetByUser bool
 }

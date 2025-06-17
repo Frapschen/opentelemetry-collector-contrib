@@ -213,9 +213,14 @@ func DefaultMetricsConfig() MetricsConfig {
 
 // ResourceAttributeConfig provides common config for a particular resource attribute.
 type ResourceAttributeConfig struct {
-	Enabled bool            `mapstructure:"enabled"`
-	Include []filter.Config `mapstructure:"include"`
-	Exclude []filter.Config `mapstructure:"exclude"`
+	Enabled bool `mapstructure:"enabled"`
+	// Experimental: MetricsInclude defines a list of filters for attribute values.
+	// If the list is not empty, only metrics with matching resource attribute values will be emitted.
+	MetricsInclude []filter.Config `mapstructure:"metrics_include"`
+	// Experimental: MetricsExclude defines a list of filters for attribute values.
+	// If the list is not empty, metrics with matching resource attribute values will not be emitted.
+	// MetricsInclude has higher priority than MetricsExclude.
+	MetricsExclude []filter.Config `mapstructure:"metrics_exclude"`
 
 	enabledSetByUser bool
 }
@@ -248,6 +253,9 @@ type ResourceAttributesConfig struct {
 	K8sDeploymentName                      ResourceAttributeConfig `mapstructure:"k8s.deployment.name"`
 	K8sDeploymentUID                       ResourceAttributeConfig `mapstructure:"k8s.deployment.uid"`
 	K8sHpaName                             ResourceAttributeConfig `mapstructure:"k8s.hpa.name"`
+	K8sHpaScaletargetrefApiversion         ResourceAttributeConfig `mapstructure:"k8s.hpa.scaletargetref.apiversion"`
+	K8sHpaScaletargetrefKind               ResourceAttributeConfig `mapstructure:"k8s.hpa.scaletargetref.kind"`
+	K8sHpaScaletargetrefName               ResourceAttributeConfig `mapstructure:"k8s.hpa.scaletargetref.name"`
 	K8sHpaUID                              ResourceAttributeConfig `mapstructure:"k8s.hpa.uid"`
 	K8sJobName                             ResourceAttributeConfig `mapstructure:"k8s.job.name"`
 	K8sJobUID                              ResourceAttributeConfig `mapstructure:"k8s.job.uid"`
@@ -316,6 +324,15 @@ func DefaultResourceAttributesConfig() ResourceAttributesConfig {
 		},
 		K8sHpaName: ResourceAttributeConfig{
 			Enabled: true,
+		},
+		K8sHpaScaletargetrefApiversion: ResourceAttributeConfig{
+			Enabled: false,
+		},
+		K8sHpaScaletargetrefKind: ResourceAttributeConfig{
+			Enabled: false,
+		},
+		K8sHpaScaletargetrefName: ResourceAttributeConfig{
+			Enabled: false,
 		},
 		K8sHpaUID: ResourceAttributeConfig{
 			Enabled: true,

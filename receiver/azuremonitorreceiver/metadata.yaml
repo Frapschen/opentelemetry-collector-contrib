@@ -1,13 +1,12 @@
 type: azuremonitor
-scope_name: otelcol/azuremonitorreceiver
 
 status:
   class: receiver
   stability:
-    development: [metrics]
+    alpha: [metrics]
   distributions: [contrib]
   codeowners:
-    active: [nslaughter, codeboten]
+    active: [nslaughter, celian-garcia]
 
 resource_attributes:
   azuremonitor.tenant_id:
@@ -15,6 +14,9 @@ resource_attributes:
     type: string
   azuremonitor.subscription_id:
     description: Azure subscription ID
+    type: string
+  azuremonitor.subscription:
+    description: Azure subscription name
     type: string
 
 tests:
