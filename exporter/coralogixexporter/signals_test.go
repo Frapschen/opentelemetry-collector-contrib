@@ -4,7 +4,6 @@
 package coralogixexporter
 
 import (
-	"context"
 	"errors"
 	"testing"
 	"time"
@@ -37,17 +36,15 @@ func TestSignalExporter_CanSend_AfterRateLimitTimeout(t *testing.T) {
 	exp, err := newSignalExporter(cfg, exportertest.NewNopSettings(exportertest.NopType), "", nil)
 	require.NoError(t, err)
 
-	rateLimitErr := errors.New("rate limit exceeded")
-	exp.EnableRateLimit(rateLimitErr)
-	exp.EnableRateLimit(rateLimitErr)
+	// Add two rate limit errors
+	exp.EnableRateLimit()
+	exp.EnableRateLimit()
 
 	assert.False(t, exp.canSend())
 
 	// Mock the time to be after the rate limit timeout (1 minute)
-	exp.rateError.state.Store(&rateErrorState{
-		timestamp: time.Now().Add(-2 * time.Minute), // Set timestamp to 2 minutes ago
-		err:       rateLimitErr,
-	})
+	now := time.Now().Add(-2 * time.Minute)
+	exp.rateError.timestamp.Store(&now)
 
 	assert.True(t, exp.canSend())
 	assert.False(t, exp.rateError.isRateLimited())
@@ -67,9 +64,8 @@ func TestSignalExporter_CanSend_FeatureDisabled(t *testing.T) {
 	exp, err := newSignalExporter(cfg, exportertest.NewNopSettings(exportertest.NopType), "", nil)
 	require.NoError(t, err)
 
-	rateLimitErr := errors.New("rate limit exceeded")
-	exp.EnableRateLimit(rateLimitErr)
-	exp.EnableRateLimit(rateLimitErr)
+	exp.EnableRateLimit()
+	exp.EnableRateLimit()
 
 	assert.True(t, exp.canSend())
 }
@@ -88,15 +84,13 @@ func TestSignalExporter_CanSend_BeforeRateLimitTimeout(t *testing.T) {
 	exp, err := newSignalExporter(cfg, exportertest.NewNopSettings(exportertest.NopType), "", nil)
 	require.NoError(t, err)
 
-	rateLimitErr := errors.New("rate limit exceeded")
-	exp.EnableRateLimit(rateLimitErr)
-	exp.EnableRateLimit(rateLimitErr)
+	// Add two rate limit errors
+	exp.EnableRateLimit()
+	exp.EnableRateLimit()
 
 	// Mock the time to be before the rate limit timeout (30 seconds ago)
-	exp.rateError.state.Store(&rateErrorState{
-		timestamp: time.Now().Add(-30 * time.Second),
-		err:       rateLimitErr,
-	})
+	now := time.Now().Add(-30 * time.Second)
+	exp.rateError.timestamp.Store(&now)
 
 	// Should not be able to send because we're still within the timeout period
 	assert.False(t, exp.canSend())
@@ -179,10 +173,10 @@ func TestSignalExporter_AuthorizationHeader(t *testing.T) {
 	require.NoError(t, err)
 
 	wrapper := &signalConfigWrapper{config: &cfg.Logs}
-	err = exp.startSignalExporter(context.Background(), componenttest.NewNopHost(), wrapper)
+	err = exp.startSignalExporter(t.Context(), componenttest.NewNopHost(), wrapper)
 	require.NoError(t, err)
 	defer func() {
-		require.NoError(t, exp.shutdown(context.Background()))
+		require.NoError(t, exp.shutdown(t.Context()))
 	}()
 
 	authHeader, ok := wrapper.config.Headers["Authorization"]
@@ -260,10 +254,10 @@ func TestSignalExporter_CustomHeadersAndAuthorization(t *testing.T) {
 			require.NoError(t, err)
 
 			wrapper := &signalConfigWrapper{config: &tt.config}
-			err = exp.startSignalExporter(context.Background(), componenttest.NewNopHost(), wrapper)
+			err = exp.startSignalExporter(t.Context(), componenttest.NewNopHost(), wrapper)
 			require.NoError(t, err)
 			defer func() {
-				require.NoError(t, exp.shutdown(context.Background()))
+				require.NoError(t, exp.shutdown(t.Context()))
 			}()
 
 			headers := wrapper.config.Headers

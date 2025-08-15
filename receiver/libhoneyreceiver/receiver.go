@@ -43,33 +43,6 @@ type libhoneyReceiver struct {
 	settings   *receiver.Settings
 }
 
-// TeamInfo is part of the AuthInfo struct that stores the team slug
-type TeamInfo struct {
-	Slug string `json:"slug"`
-
-	// prevent unkeyed literal initialization
-	_ struct{}
-}
-
-// EnvironmentInfo is part of the AuthInfo struct that stores the environment slug and name
-type EnvironmentInfo struct {
-	Slug string `json:"slug"`
-	Name string `json:"name"`
-
-	// prevent unkeyed literal initialization
-	_ struct{}
-}
-
-// AuthInfo is used by Libhoney to validate team and environment information against Honeycomb's Auth API
-type AuthInfo struct {
-	APIKeyAccess map[string]bool `json:"api_key_access"`
-	Team         TeamInfo        `json:"team"`
-	Environment  EnvironmentInfo `json:"environment"`
-
-	// prevent unkeyed literal initialization
-	_ struct{}
-}
-
 func newLibhoneyReceiver(cfg *Config, set *receiver.Settings) (*libhoneyReceiver, error) {
 	r := &libhoneyReceiver{
 		cfg:        cfg,
@@ -92,14 +65,15 @@ func newLibhoneyReceiver(cfg *Config, set *receiver.Settings) (*libhoneyReceiver
 
 func (r *libhoneyReceiver) startHTTPServer(ctx context.Context, host component.Host) error {
 	// If HTTP is not enabled, nothing to start.
-	if r.cfg.HTTP == nil {
+	if !r.cfg.HTTP.HasValue() {
 		return nil
 	}
 
 	httpMux := http.NewServeMux()
 
-	r.settings.Logger.Info("r.nextTraces is not null so httpTracesReceiver was added", zap.Int("paths", len(r.cfg.HTTP.TracesURLPaths)))
-	for _, path := range r.cfg.HTTP.TracesURLPaths {
+	httpCfg := r.cfg.HTTP.Get()
+	r.settings.Logger.Info("r.nextTraces is not null so httpTracesReceiver was added", zap.Int("paths", len(httpCfg.TracesURLPaths)))
+	for _, path := range httpCfg.TracesURLPaths {
 		httpMux.HandleFunc(path, func(resp http.ResponseWriter, req *http.Request) {
 			r.handleEvent(resp, req)
 		})
@@ -113,13 +87,13 @@ func (r *libhoneyReceiver) startHTTPServer(ctx context.Context, host component.H
 	}
 
 	var err error
-	if r.server, err = r.cfg.HTTP.ToServer(ctx, host, r.settings.TelemetrySettings, httpMux); err != nil {
+	if r.server, err = httpCfg.ToServer(ctx, host, r.settings.TelemetrySettings, httpMux); err != nil {
 		return err
 	}
 
-	r.settings.Logger.Info("Starting HTTP server", zap.String("endpoint", r.cfg.HTTP.Endpoint))
+	r.settings.Logger.Info("Starting HTTP server", zap.String("endpoint", httpCfg.Endpoint))
 	var hln net.Listener
-	if hln, err = r.cfg.HTTP.ToListener(ctx); err != nil {
+	if hln, err = httpCfg.ToListener(ctx); err != nil {
 		return err
 	}
 
@@ -164,9 +138,9 @@ func (r *libhoneyReceiver) registerLogConsumer(tc consumer.Logs) {
 
 func (r *libhoneyReceiver) handleAuth(resp http.ResponseWriter, req *http.Request) {
 	authURL := fmt.Sprintf("%s/1/auth", r.cfg.AuthAPI)
-	authReq, err := http.NewRequest(http.MethodGet, authURL, nil)
+	authReq, err := http.NewRequest(http.MethodGet, authURL, http.NoBody)
 	if err != nil {
-		errJSON, _ := json.Marshal(`{"error": "failed to create AuthInfo request"}`)
+		errJSON, _ := json.Marshal(`{"error": "failed to create auth request"}`)
 		writeResponse(resp, "json", http.StatusBadRequest, errJSON)
 		return
 	}
@@ -174,7 +148,7 @@ func (r *libhoneyReceiver) handleAuth(resp http.ResponseWriter, req *http.Reques
 	var authClient http.Client
 	authResp, err := authClient.Do(authReq)
 	if err != nil {
-		errJSON, _ := json.Marshal(fmt.Sprintf(`"error": "failed to send request to auth api endpoint", "message", "%s"}`, err.Error()))
+		errJSON, _ := json.Marshal(fmt.Sprintf(`"error": "failed to send request to auth api endpoint", "message", %q}`, err.Error()))
 		writeResponse(resp, "json", http.StatusBadRequest, errJSON)
 		return
 	}
@@ -182,7 +156,7 @@ func (r *libhoneyReceiver) handleAuth(resp http.ResponseWriter, req *http.Reques
 
 	switch {
 	case authResp.StatusCode == http.StatusUnauthorized:
-		errJSON, _ := json.Marshal(`"error": "received 401 response for AuthInfo request from Honeycomb API - check your API key"}`)
+		errJSON, _ := json.Marshal(`"error": "received 401 response for authInfo request from Honeycomb API - check your API key"}`)
 		writeResponse(resp, "json", http.StatusBadRequest, errJSON)
 		return
 	case authResp.StatusCode > 299:
@@ -208,7 +182,9 @@ func (r *libhoneyReceiver) handleEvent(resp http.ResponseWriter, req *http.Reque
 		r.settings.Logger.Info("No dataset found in URL", zap.String("req.RequestURI", req.RequestURI))
 	}
 
-	for _, p := range r.cfg.HTTP.TracesURLPaths {
+	// handleEvent is only called if an HTTP config is set, so HTTP must have a value.
+	httpCfg := r.cfg.HTTP.Get()
+	for _, p := range httpCfg.TracesURLPaths {
 		dataset = strings.Replace(dataset, p, "", 1)
 		r.settings.Logger.Debug("dataset parsed", zap.String("dataset.parsed", dataset))
 	}
@@ -262,16 +238,19 @@ func (r *libhoneyReceiver) handleEvent(resp http.ResponseWriter, req *http.Reque
 
 	otlpLogs, otlpTraces := parser.ToPdata(dataset, libhoneyevents, r.cfg.FieldMapConfig, *r.settings.Logger)
 
+	// Use the request context which already contains client metadata when IncludeMetadata is enabled
+	ctx := req.Context()
+
 	numLogs := otlpLogs.LogRecordCount()
 	if numLogs > 0 {
-		ctx := r.obsreport.StartLogsOp(context.Background())
+		ctx = r.obsreport.StartLogsOp(ctx)
 		err = r.nextLogs.ConsumeLogs(ctx, otlpLogs)
 		r.obsreport.EndLogsOp(ctx, "protobuf", numLogs, err)
 	}
 
 	numTraces := otlpTraces.SpanCount()
 	if numTraces > 0 {
-		ctx := r.obsreport.StartTracesOp(context.Background())
+		ctx = r.obsreport.StartTracesOp(ctx)
 		err = r.nextTraces.ConsumeTraces(ctx, otlpTraces)
 		r.obsreport.EndTracesOp(ctx, "protobuf", numTraces, err)
 	}

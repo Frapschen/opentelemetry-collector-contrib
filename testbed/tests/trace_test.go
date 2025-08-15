@@ -10,7 +10,6 @@ package tests
 // coded in this file or use scenarios from perf_scenarios.go.
 
 import (
-	"context"
 	"path/filepath"
 	"testing"
 
@@ -90,33 +89,6 @@ func TestTrace10kSPS(t *testing.T) {
 			testbed.ResourceSpec{
 				ExpectedMaxCPU: 22,
 				ExpectedMaxRAM: 220,
-			},
-		},
-		{
-			"SAPM",
-			datasenders.NewSapmDataSender(testutil.GetAvailablePort(t), ""),
-			datareceivers.NewSapmDataReceiver(testutil.GetAvailablePort(t), ""),
-			testbed.ResourceSpec{
-				ExpectedMaxCPU: 32,
-				ExpectedMaxRAM: 100,
-			},
-		},
-		{
-			"SAPM-gzip",
-			datasenders.NewSapmDataSender(testutil.GetAvailablePort(t), "gzip"),
-			datareceivers.NewSapmDataReceiver(testutil.GetAvailablePort(t), "gzip"),
-			testbed.ResourceSpec{
-				ExpectedMaxCPU: 35,
-				ExpectedMaxRAM: 110,
-			},
-		},
-		{
-			"SAPM-zstd",
-			datasenders.NewSapmDataSender(testutil.GetAvailablePort(t), "zstd"),
-			datareceivers.NewSapmDataReceiver(testutil.GetAvailablePort(t), "zstd"),
-			testbed.ResourceSpec{
-				ExpectedMaxCPU: 32,
-				ExpectedMaxRAM: 300,
 			},
 		},
 		{
@@ -291,7 +263,7 @@ func verifySingleSpan(
 	span.SetName(spanName)
 
 	sender := tc.LoadGenerator.(*testbed.ProviderSender).Sender.(testbed.TraceDataSender)
-	require.NoError(t, sender.ConsumeTraces(context.Background(), td))
+	require.NoError(t, sender.ConsumeTraces(t.Context(), td))
 
 	// We bypass the load generator in this test, but make sure to increment the
 	// counter since it is used in final reports.

@@ -4,7 +4,6 @@
 package opampextension
 
 import (
-	"context"
 	"path/filepath"
 	"testing"
 	"time"
@@ -40,8 +39,9 @@ func TestUnmarshalConfig(t *testing.T) {
 			},
 			InstanceUID: "01BX5ZZKBKACTAV9WEVGEMMVRZ",
 			Capabilities: Capabilities{
-				ReportsEffectiveConfig: true,
-				ReportsHealth:          true,
+				ReportsEffectiveConfig:     true,
+				ReportsHealth:              true,
+				ReportsAvailableComponents: true,
 			},
 			PPIDPollInterval: 5 * time.Second,
 		}, cfg)
@@ -65,8 +65,9 @@ func TestUnmarshalHttpConfig(t *testing.T) {
 			},
 			InstanceUID: "01BX5ZZKBKACTAV9WEVGEMMVRZ",
 			Capabilities: Capabilities{
-				ReportsEffectiveConfig: true,
-				ReportsHealth:          true,
+				ReportsEffectiveConfig:     true,
+				ReportsHealth:              true,
+				ReportsAvailableComponents: true,
 			},
 			PPIDPollInterval: 5 * time.Second,
 		}, cfg)
@@ -203,7 +204,7 @@ func TestOpAMPServer_GetTLSConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			tlsConfig, err := tt.server.GetTLSConfig(ctx)
 			assert.NoError(t, err)
 			tt.expectedTLSConfig(t, tlsConfig)
