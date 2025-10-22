@@ -14,7 +14,7 @@ import (
 
 type IsMatchArguments[K any] struct {
 	Target  ottl.StringLikeGetter[K]
-	Pattern string
+	Pattern ottl.StringGetter[K]
 }
 
 func NewIsMatchFactory[K any]() ottl.Factory[K] {
@@ -31,12 +31,18 @@ func createIsMatchFunction[K any](_ ottl.FunctionContext, oArgs ottl.Arguments) 
 	return isMatch(args.Target, args.Pattern)
 }
 
-func isMatch[K any](target ottl.StringLikeGetter[K], pattern string) (ottl.ExprFunc[K], error) {
-	compiledPattern, err := regexp.Compile(pattern)
-	if err != nil {
-		return nil, fmt.Errorf("the pattern supplied to IsMatch is not a valid regexp pattern: %w", err)
-	}
+func isMatch[K any](target ottl.StringLikeGetter[K], pattern ottl.StringGetter[K]) (ottl.ExprFunc[K], error) {
 	return func(ctx context.Context, tCtx K) (any, error) {
+		patternVal, err := pattern.Get(ctx, tCtx)
+		if err != nil {
+			return nil, err
+		}
+
+		compiledPattern, err := regexp.Compile(patternVal)
+		if err != nil {
+			return nil, fmt.Errorf("the pattern supplied to IsMatch is not a valid regexp pattern: %w", err)
+		}
+
 		val, err := target.Get(ctx, tCtx)
 		if err != nil {
 			return nil, err
